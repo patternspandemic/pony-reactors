@@ -1,5 +1,5 @@
 @echo off
-set TARGET={PACKAGE}
+set TARGET=reactors
 
 if "%1"=="help" goto usage
 if "%1"=="--help" goto usage

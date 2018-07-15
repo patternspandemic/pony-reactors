@@ -1,11 +1,11 @@
-build/{PACKAGE}: build {PACKAGE}/*.pony
-	ponyc {PACKAGE} -o build --debug
+build/reactors: build reactors/*.pony
+	ponyc reactors -o build --debug
 
 build:
 	mkdir build
 
-test: build/{PACKAGE}
-	build/{PACKAGE}
+test: build/reactors
+	build/reactors
 
 clean:
 	rm -rf build
