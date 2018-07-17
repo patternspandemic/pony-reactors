@@ -51,3 +51,10 @@ primitive BuildSubscription
           unsubscribe_action()
         end
     end
+
+// TODO: Subscription Implementations
+//  empty (singleton)
+//  Composite
+//  Proxy (trait for a thing that defers to a subscription it has)
+//  Collection (mutable version of Composite?)
+//  Cell (mutable cell of at most one subscription)
