@@ -27,7 +27,7 @@ trait Observer[T: Any #send]
 
 
 primitive BuildObserver[T: Any #send]
-  """ Observer builder  """
+  """ Observer Builder  """
   
   fun apply(
     react': {(T, (EventHint | None))},
