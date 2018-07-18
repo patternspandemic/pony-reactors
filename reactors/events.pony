@@ -1,9 +1,11 @@
+use "collections"
 
 interface val EventHint
 interface val EventError
   fun apply(): String val
 
 type OptionalEventHint is (EventHint | None)
+
 
 trait Events[T: Any #send]
   """
@@ -71,3 +73,78 @@ trait Events[T: Any #send]
     """
     let o: Observer[T] = BuildObserver[T].of_except(except_handler)
     on_reaction(o)
+
+
+// TODO: Push docstring
+trait Push[T: Any #send]
+  """"""
+  // Push state accessors
+  fun _get_propogation_depth(): Bool
+    """ Getter for `_propogation_depth` """
+  fun ref _set_propogation_depth(value: Bool)
+    """ Setter for `_propogation_depth` """
+  fun ref get_observers(): (SetIs[Observer[T]] | None)
+    """ Getter for `_observers` """
+  fun ref set_observers(observers: (SetIs[Observer[T]] | None))
+    """ Setter for `_observers` """
+  fun _get_events_unreacted(): Bool
+    """ Getter for `_events_unreacted` """
+  fun ref _set_events_unreacted(value: Bool)
+    """ Getter for `_events_unreacted` """
+
+  // Implementation
+  fun react_all(value: T, hint: EventHint) => None
+
+
+  fun except_all(x: EventError) => None
+
+
+  fun unreact_all() => None
+
+
+
+type Emitter[T: Any #send] is (Push[T] & Events[T] & Observer[T])
+
+
+
+// TODO: BuildEvents docstring
+primitive BuildEvents
+  """"""
+
+  // TODO: BuildEvents.emitter docstring
+  fun emitter[T: Any #send](): Emitter[T] =>
+    """"""
+    object is Emitter[T]
+      // Push state
+      var _propogation_depth: U32 = 0
+      var _observers: (SetIs[Observer[T]] | None) = _observers.create()
+      var _events_unreacted: Bool = false
+      // Emitter state
+      var _closed: Bool = false
+
+      // State Accessors
+      fun _get_propogation_depth(): Bool => _propogation_depth
+      fun ref _set_propogation_depth(value: Bool) => _propogation_depth = value
+      fun ref get_observers(): (SetIs[Observer[T]] | None) => _observers
+      fun ref set_observers(observers: (SetIs[Observer[T]] | None)) =>
+        _observers = observers
+      fun _get_events_unreacted(): Bool => _events_unreacted
+      fun ref _set_events_unreacted(value: Bool) => _events_unreacted = value
+
+      fun react(value: T, hint: (EventHint | None) = None) =>
+        if not _closed then
+          react_all(consume value, hint)
+        end
+
+      fun except(x: EventError) =>
+        if not _closed then
+          except_all(x)
+        end
+
+      fun unreact() =>
+        if not _closed then
+          _closed = true
+          unreact_all()
+          // demux = None // TODO: Deal
+        end
+    end
