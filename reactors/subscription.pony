@@ -52,6 +52,13 @@ primitive BuildSubscription
         end
     end
 
+  fun empty(): Subscription =>
+    """ A subscription that does not unsubscribe from anything. """
+    object ref is Subscription
+      fun ref unsubscribe() => None
+      fun _is_unsubscribed(): Bool => true
+    end
+
 // TODO: Subscription Implementations
 //  empty (singleton)
 //  Composite

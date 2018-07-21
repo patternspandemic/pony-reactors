@@ -18,7 +18,7 @@ trait Observer[T: Any #send]
     """
     None
   
-  fun unreact() =>
+  fun ref unreact() =>
     """
     Called by an event stream when there will be no more events produced.
     """
@@ -31,7 +31,7 @@ primitive BuildObserver[T: Any #send]
   fun apply(
     react': {(T, (EventHint | None))},
     except': {(EventError)},
-    unreact': {()})
+    unreact': {ref ()})
     : Observer[T]
   =>
     """
@@ -41,12 +41,12 @@ primitive BuildObserver[T: Any #send]
       fun react(value: T, hint: (EventHint | None) = None) =>
         react'( consume value, hint)
       fun except(x: EventError) => except'(x)
-      fun unreact() => unreact'()
+      fun ref unreact() => unreact'()
     end
 
   fun of_react_and_unreact(
     react': {(T, (EventHint | None))},
-    unreact': {()})
+    unreact': {ref ()})
     : Observer[T]
   =>
     """
@@ -56,7 +56,7 @@ primitive BuildObserver[T: Any #send]
     object is Observer[T]
       fun react(value: T, hint: (EventHint | None) = None) =>
         react'( consume value, hint)
-      fun unreact() => unreact'()
+      fun ref unreact() => unreact'()
     end
 
   fun of_react(react': {(T, (EventHint | None))}): Observer[T] =>
@@ -79,13 +79,13 @@ primitive BuildObserver[T: Any #send]
       fun react(value: T, hint: (EventHint | None) = None) => react'()
     end
 
-  fun of_unreact(unreact': {()}): Observer[T] =>
+  fun of_unreact(unreact': {ref ()}): Observer[T] =>
     """
     Create and return an observer using the specified `unreact` handler.
     `react` and `except` events are ignored.
     """
     object is Observer[T]
-      fun unreact() => unreact'()
+      fun ref unreact() => unreact'()
     end
 
     fun of_except(except': {(EventError)}): Observer[T] =>

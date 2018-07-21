@@ -75,14 +75,11 @@ trait Events[T: Any #send]
     on_reaction(o)
 
 
-// TODO: Push docstring
-trait Push[T: Any #send]
-  """"""
-  // Push state accessors
-  fun _get_propogation_depth(): Bool
-    """ Getter for `_propogation_depth` """
-  fun ref _set_propogation_depth(value: Bool)
-    """ Setter for `_propogation_depth` """
+// TODO: Push
+// - Possibility of having references to observers that are no longer reachable?
+trait Push[T: Any #send] is Events[T]
+  """ Default Implementation of an event stream. """
+  // Push state accessors ...
   fun ref get_observers(): (SetIs[Observer[T]] | None)
     """ Getter for `_observers` """
   fun ref set_observers(observers: (SetIs[Observer[T]] | None))
@@ -92,59 +89,101 @@ trait Push[T: Any #send]
   fun ref _set_events_unreacted(value: Bool)
     """ Getter for `_events_unreacted` """
 
-  // Implementation
-  fun react_all(value: T, hint: EventHint) => None
+  // Implementation ...
 
+  fun ref on_reaction(observer: Observer[T]): Subscription =>
+    """ Add `observer` to the set of observers, subscribing it. """
+    if _get_events_unreacted() then
+      // This event stream is no longer propogating events. Immediately unreact
+      // the observer, and return an empty subscription.
+      observer.unreact()
+      BuildSubscription.empty()
+    else
+      // Add the observer to the set of observers, create the set when needed.
+      match get_observers()
+      | None =>
+        let observers = SetIs[Observer[T]]
+        observers.set(observer)
+        set_observers(observers)
+      | let observers: SetIs[Observer[T]] =>
+        observers.set(observer)
+      end
+      // Return a subscription of the observer, allowing it to be unsubscribe.
+      _new_subscription(observer)
+    end
+
+  fun ref _new_subscription(observer: Observer[T]): Subscription =>
+    """ Build a subscription for `observer` """
+    BuildSubscription(this~_remove_reaction(observer))
+
+  fun ref _remove_reaction(observer: Observer[T]) =>
+    """ Remove `observer` from the set of observers, unsubscribing it. """
+    match get_observers()
+    | let observers: SetIs[Observer[T]] =>
+      observers.unset(observer)
+      // Assign set of observers to None if empty.
+      if observers.size() == 0 then set_observers(None) end
+    end
+
+  fun react_all(value: T, hint: EventHint) => None
+    // TODO: Push.react_all
 
   fun except_all(x: EventError) => None
+    // TODO: Push.except_all
+
+  fun ref unreact_all() =>
+    """ Send an `unreact` event to all observers """
+    _set_events_unreacted(true)
+    match get_observers()
+    | let observers: SetIs[Observer[T]] =>
+      for observer in observers.values() do
+        observer.unreact()
+      end
+    end
+    // Assign set of observers to None, as no more events will be propogated.
+    set_observers(None)
 
 
-  fun unreact_all() => None
 
+// type Emitter[T: Any #send] is (Push[T] & Events[T] & Observer[T])
+class Emitter[T: Any #send] is (Push[T] & Events[T] & Observer[T])
+  """
+  An event source that emits events when `react`, `except`, or `unreact` is called. Emitters are simultaneously an event stream and observer.
+  """
+  // Push state
+  var _observers: (SetIs[Observer[T]] | None) = None
+  var _events_unreacted: Bool = false
 
+  // Implemented state accessors
+  fun ref get_observers(): (SetIs[Observer[T]] | None) => _observers
+  fun ref set_observers(observers: (SetIs[Observer[T]] | None)) =>
+    _observers = observers
+  fun _get_events_unreacted(): Bool => _events_unreacted
+  fun ref _set_events_unreacted(value: Bool) => _events_unreacted = value
 
-type Emitter[T: Any #send] is (Push[T] & Events[T] & Observer[T])
+  // Observer ...
+  fun react(value: T, hint: (EventHint | None) = None) =>
+    if not _get_events_unreacted() then
+      react_all(consume value, hint)
+    end
 
+  fun except(x: EventError) =>
+    if not _get_events_unreacted() then
+      except_all(x)
+    end
+
+  fun ref unreact() =>
+    if not _get_events_unreacted() then
+      unreact_all()
+    end
 
 
 // TODO: BuildEvents docstring
 primitive BuildEvents
   """"""
 
-  // TODO: BuildEvents.emitter docstring
   fun emitter[T: Any #send](): Emitter[T] =>
-    """"""
-    object is Emitter[T]
-      // Push state
-      var _propogation_depth: U32 = 0
-      var _observers: (SetIs[Observer[T]] | None) = _observers.create()
-      var _events_unreacted: Bool = false
-      // Emitter state
-      var _closed: Bool = false
-
-      // State Accessors
-      fun _get_propogation_depth(): Bool => _propogation_depth
-      fun ref _set_propogation_depth(value: Bool) => _propogation_depth = value
-      fun ref get_observers(): (SetIs[Observer[T]] | None) => _observers
-      fun ref set_observers(observers: (SetIs[Observer[T]] | None)) =>
-        _observers = observers
-      fun _get_events_unreacted(): Bool => _events_unreacted
-      fun ref _set_events_unreacted(value: Bool) => _events_unreacted = value
-
-      fun react(value: T, hint: (EventHint | None) = None) =>
-        if not _closed then
-          react_all(consume value, hint)
-        end
-
-      fun except(x: EventError) =>
-        if not _closed then
-          except_all(x)
-        end
-
-      fun unreact() =>
-        if not _closed then
-          _closed = true
-          unreact_all()
-          // demux = None // TODO: Deal
-        end
-    end
+    """
+    An event source that emits events when `react`, `except`, or `unreact` is called. Emitters are simultaneously an event stream and observer.
+    """
+    Emitter[T]
