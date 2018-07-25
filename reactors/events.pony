@@ -125,11 +125,36 @@ trait Push[T: Any #send] is Events[T]
       if observers.size() == 0 then set_observers(None) end
     end
 
-  fun react_all(value: T, hint: EventHint) => None
-    // TODO: Push.react_all
+  fun ref react_all(value: T, hint: EventHint) =>
+    """ Send a `react` event to all observers """
 
-  fun except_all(x: EventError) => None
-    // TODO: Push.except_all
+    // FIXME: How to deal with value that needs to be consumed to all observers. Clone? / Enforce a single observer? / Enforce #share instead of send?
+
+    // Consume value directly when there's a single observer, otherwise clone?
+
+    // Or consume to first observer, send tag to others when T is iso?
+
+    match get_observers()
+    | let observers: SetIs[Observer[T]] =>
+      if observers.size() == 1 then
+        try observers.index(0)?.react(consume value, hint) end
+      else
+        // SetIs not ordered though, must keep sep
+        for observer in observers.values() do
+          None
+          // observer.react(consume value, hint)
+        end
+      end
+    end
+
+  fun ref except_all(x: EventError) =>
+    """ Send an `except` event to all observers """
+    match get_observers()
+    | let observers: SetIs[Observer[T]] =>
+      for observer in observers.values() do
+        observer.except(x)
+      end
+    end
 
   fun ref unreact_all() =>
     """ Send an `unreact` event to all observers """
@@ -162,12 +187,12 @@ class Emitter[T: Any #send] is (Push[T] & Events[T] & Observer[T])
   fun ref _set_events_unreacted(value: Bool) => _events_unreacted = value
 
   // Observer ...
-  fun react(value: T, hint: (EventHint | None) = None) =>
+  fun ref react(value: T, hint: (EventHint | None) = None) =>
     if not _get_events_unreacted() then
       react_all(consume value, hint)
     end
 
-  fun except(x: EventError) =>
+  fun ref except(x: EventError) =>
     if not _get_events_unreacted() then
       except_all(x)
     end
