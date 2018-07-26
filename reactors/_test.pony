@@ -8,5 +8,9 @@ actor Main is TestList
     None
 
   fun tag tests(test: PonyTest) =>
+    // Observer Tests
     test(_TestObserver)
+    // Subscription Tests
     test(_TestSubscription)
+    // Events Tests
+    test(_TestEventsEmitterImmediatelyUnreactToClosed)

@@ -29,8 +29,8 @@ primitive BuildObserver[T: Any #read]
   """ Observer Builder  """
   
   fun apply(
-    react': {(T, (EventHint | None))},
-    except': {(EventError)},
+    react': {ref (T, (EventHint | None))},
+    except': {ref (EventError)},
     unreact': {ref ()})
     : Observer[T]
   =>
@@ -38,14 +38,14 @@ primitive BuildObserver[T: Any #read]
     Create and return an observer using the specified handlers.
     """
     object is Observer[T]
-      fun react(value: T, hint: (EventHint | None) = None) =>
+      fun ref react(value: T, hint: (EventHint | None) = None) =>
         react'(value, hint)
-      fun except(x: EventError) => except'(x)
+      fun ref except(x: EventError) => except'(x)
       fun ref unreact() => unreact'()
     end
 
   fun of_react_and_unreact(
-    react': {(T, (EventHint | None))},
+    react': {ref (T, (EventHint | None))},
     unreact': {ref ()})
     : Observer[T]
   =>
@@ -54,29 +54,29 @@ primitive BuildObserver[T: Any #read]
     handlers. `except` events are ignored.
     """
     object is Observer[T]
-      fun react(value: T, hint: (EventHint | None) = None) =>
+      fun ref react(value: T, hint: (EventHint | None) = None) =>
         react'(value, hint)
       fun ref unreact() => unreact'()
     end
 
-  fun of_react(react': {(T, (EventHint | None))}): Observer[T] =>
+  fun of_react(react': {ref (T, (EventHint | None))}): Observer[T] =>
     """
     Create and return an observer using the specified `react` handler.
     `except` and `unreact` events are ignored.
     """
     object is Observer[T]
-      fun react(value: T, hint: (EventHint | None) = None) =>
+      fun ref react(value: T, hint: (EventHint | None) = None) =>
         react'(value, hint)
     end
 
-  fun of_react_without_regards(react': {()}): Observer[T] =>
+  fun of_react_without_regards(react': {ref ()}): Observer[T] =>
     """
     Create and return an observer using the specified `react` handler, which
     disregards the value of the event. `except` and `unreact` events are
     ignored.
     """
     object is Observer[T]
-      fun react(value: T, hint: (EventHint | None) = None) => react'()
+      fun ref react(value: T, hint: (EventHint | None) = None) => react'()
     end
 
   fun of_unreact(unreact': {ref ()}): Observer[T] =>
@@ -88,13 +88,13 @@ primitive BuildObserver[T: Any #read]
       fun ref unreact() => unreact'()
     end
 
-  fun of_except(except': {(EventError)}): Observer[T] =>
+  fun of_except(except': {ref (EventError)}): Observer[T] =>
     """
     Create and return an observer using the specified `except` handler.
     `react` and `unreact` events are ignored.
     """
     object is Observer[T]
-      fun except(x: EventError) => except'(x)
+      fun ref except(x: EventError) => except'(x)
     end
 
   fun that_mutates[C: Any ref](

@@ -22,8 +22,8 @@ trait Events[T: Any #read]
     """
 
   fun ref on_event_or_done(
-    react_handler: {(T, OptionalEventHint)},
-    unreact_handler: {()})
+    react_handler: {ref (T, OptionalEventHint)},
+    unreact_handler: {ref ()})
     : Subscription
   =>
     """
@@ -37,7 +37,7 @@ trait Events[T: Any #read]
     )
     on_reaction(o)
 
-  fun ref on_event(react_handler: {(T, OptionalEventHint)}): Subscription =>
+  fun ref on_event(react_handler: {ref (T, OptionalEventHint)}): Subscription =>
     """
     Register a callback for `react`. Shorthand for `on_reaction` where `except`
     and `unreact` events are ignored.
@@ -48,7 +48,7 @@ trait Events[T: Any #read]
   // TODO: Events on_match - Not sure this is really needed. What's the difference between implementing something like Scala PartialFunction and simply using nested Pony match statements in a handler given to on_event? Maybe some higher level composition of match handlers arrived from disparate sources.
   // fun ref on_match
 
-  fun ref on(react_handler: {()}): Subscription =>
+  fun ref on(react_handler: {ref ()}): Subscription =>
     """
     Register a callback for `react` events without regards to event values.
     Shorthand for `on_reaction`. This method is useful when the event value is
@@ -58,7 +58,7 @@ trait Events[T: Any #read]
       BuildObserver[T].of_react_without_regards(react_handler)
     on_reaction(o)
 
-  fun ref on_done(unreact_handler: {()}): Subscription =>
+  fun ref on_done(unreact_handler: {ref ()}): Subscription =>
     """
     Register a callback for `unreact`. Shorthand for `on_reaction` where
     `react` and `except` events are ignored.
@@ -66,7 +66,7 @@ trait Events[T: Any #read]
     let o: Observer[T] = BuildObserver[T].of_unreact(unreact_handler)
     on_reaction(o)
 
-  fun ref on_except(except_handler: {(EventError)}): Subscription =>
+  fun ref on_except(except_handler: {ref (EventError)}): Subscription =>
     """
     Register a callback for `except`. Shorthand for `on_reaction` where
     `react` and `unreact` events are ignored.
