@@ -73,15 +73,19 @@ trait Events[T: Any #read]
     """
     let o: Observer[T] = BuildObserver[T].of_except(except_handler)
     on_reaction(o)
-/*
-  fun ref mutate[M: Any ref](
-    mutable: Mutable[M],
-    mutator: {(M, T)})
+
+  fun ref mutate[C: Any ref](
+    mutable: Mutable[C],
+    mutator: {ref (C, T)})
     : Subscription
   =>
-    let o: Observer[T] = BuildObserver[T].that_mutates[M](mutable, mutator)
+    """
+    Mutate the target `Mutable` event stream called `mutable` with `mutator`
+    each time this event stream produces an event.
+    """
+    let o: Observer[T] = BuildObserver[T].that_mutates[C](mutable, mutator)
     on_reaction(o)
-*/
+
 
 // TODO: Push
 // - Possibility of having references to observers that are no longer reachable?
@@ -164,8 +168,13 @@ trait Push[T: Any #read] is Events[T]
     // Assign set of observers to None, as no more events will be propogated.
     set_observers(None)
 
+  fun ref has_subscriptions(): Bool =>
+    match get_observers()
+    | None => false
+    | let _: SetIs[Observer[T]] => true
+    end
 
-// type Emitter[T: Any #read] is (Push[T] & Events[T] & Observer[T])
+
 class Emitter[T: Any #read] is (Push[T] & Events[T] & Observer[T])
   """
   An event source that emits events when `react`, `except`, or `unreact` is called. Emitters are simultaneously an event stream and observer.
@@ -197,15 +206,16 @@ class Emitter[T: Any #read] is (Push[T] & Events[T] & Observer[T])
       unreact_all()
     end
 
-
-// TODO: Mutable - This is broken, need to reconcile M, T
-//    It would normally be a Push[M] & Events[M], but M is needed to be ref,
-//    but T is #read :/ This kinda requires T to be Any ref
-//    Maybe require M to be a persistant DS.., but then can't reassign content,
-//    unless mutate operators can be adjusted to reassign to content.
+// TODO: Mutable - Try to make this safer by requiring the mutator replace content with val versions, makeing the only way to easily update the signal to go through the mutate observer protocol. So instead of allowing content to be directly mutable (ref), allow it to be (val) replaced by the mutator.
 class Mutable[M: Any ref] is (Push[M] & Events[M])
   """
-  An event stream that emits events when the underlying mutable object is modified.
+  An event stream that emits an underlying mutable object as its event values
+  when that underlying mutable object is potentially modified. This is a type of
+  signal which provides a controlled way of manipulating mutable values.
+
+  Note: It is important the underlying mutable object must only be mutated by
+  the `mutate*` operators of `Events`, and never be mutated directly by
+  accessing the signal's `content` directly.
   """
   // Push state
   var _observers: (SetIs[Observer[M]] | None) = None

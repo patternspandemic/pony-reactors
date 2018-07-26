@@ -1,7 +1,7 @@
 use "ponytest"
 
-primitive _TestHint is EventHint
-primitive _TestEventError is EventError
+primitive _ObserverTestHint is EventHint
+primitive _ObserverTestEventError is EventError
   fun apply(): String => "except"
 
 class iso _TestObserver is UnitTest
@@ -36,6 +36,6 @@ class iso _TestObserver is UnitTest
 
     o.react(false)
     o.react(true)
-    o.react(true, _TestHint)
-    o.except(_TestEventError)
+    o.react(true, _ObserverTestHint)
+    o.except(_ObserverTestEventError)
     o.unreact()

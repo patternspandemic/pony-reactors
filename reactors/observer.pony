@@ -97,17 +97,22 @@ primitive BuildObserver[T: Any #read]
       fun except(x: EventError) => except'(x)
     end
 
-  // TODO: BuildObserver.that_mutates docstring
-  fun that_mutates[M: Any ref](
-    mutable': Mutable[M],
-    mutator': {ref (M, T)}) // TODO: mutator need not be ref?
+  fun that_mutates[C: Any ref](
+    mutable': Mutable[C],
+    mutator': {ref (C, T)}) // TODO: mutator need not be ref?
     : Observer[T]
   =>
-    """"""
+    """
+    Create and return an observer that on reaction, firsts mutates the
+    `Mutable` event stream `mutable'` and then tells that event stream to
+    react to all its observers.
+    """
     object is Observer[T]
-      let mutation: {ref (T)} = mutator'~apply(mutable'.content)
+      let mutate_with: {ref (T)} = mutator'~apply(mutable'.content)
       fun ref react(value: T, hint: (EventHint | None) = None) =>
-        mutation(value)
+        // Mutates the underlying content of the Mutable
+        mutate_with(value)
+        // React all observers of the mutable event stream
         mutable'.react_all(mutable'.content, None)
       fun ref except(x: EventError) => mutable'.except_all(x)
     end
