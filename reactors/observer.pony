@@ -1,5 +1,5 @@
 
-trait Observer[T: Any #send]
+trait Observer[T: Any #read]
   """
   An observer of values of type T produced by an event stream Events[T], or a
   signal indicating there will be no more events.
@@ -25,7 +25,7 @@ trait Observer[T: Any #send]
     None
 
 
-primitive BuildObserver[T: Any #send]
+primitive BuildObserver[T: Any #read]
   """ Observer Builder  """
   
   fun apply(
@@ -39,7 +39,7 @@ primitive BuildObserver[T: Any #send]
     """
     object is Observer[T]
       fun react(value: T, hint: (EventHint | None) = None) =>
-        react'( consume value, hint)
+        react'(value, hint)
       fun except(x: EventError) => except'(x)
       fun ref unreact() => unreact'()
     end
@@ -55,7 +55,7 @@ primitive BuildObserver[T: Any #send]
     """
     object is Observer[T]
       fun react(value: T, hint: (EventHint | None) = None) =>
-        react'( consume value, hint)
+        react'(value, hint)
       fun ref unreact() => unreact'()
     end
 
@@ -66,7 +66,7 @@ primitive BuildObserver[T: Any #send]
     """
     object is Observer[T]
       fun react(value: T, hint: (EventHint | None) = None) =>
-        react'( consume value, hint)
+        react'(value, hint)
     end
 
   fun of_react_without_regards(react': {()}): Observer[T] =>
@@ -88,11 +88,26 @@ primitive BuildObserver[T: Any #send]
       fun ref unreact() => unreact'()
     end
 
-    fun of_except(except': {(EventError)}): Observer[T] =>
+  fun of_except(except': {(EventError)}): Observer[T] =>
     """
     Create and return an observer using the specified `except` handler.
     `react` and `unreact` events are ignored.
     """
     object is Observer[T]
       fun except(x: EventError) => except'(x)
+    end
+
+  // TODO: BuildObserver.that_mutates docstring
+  fun that_mutates[M: Any ref](
+    mutable': Mutable[M],
+    mutator': {ref (M, T)}) // TODO: mutator need not be ref?
+    : Observer[T]
+  =>
+    """"""
+    object is Observer[T]
+      let mutation: {ref (T)} = mutator'~apply(mutable'.content)
+      fun ref react(value: T, hint: (EventHint | None) = None) =>
+        mutation(value)
+        mutable'.react_all(mutable'.content, None)
+      fun ref except(x: EventError) => mutable'.except_all(x)
     end

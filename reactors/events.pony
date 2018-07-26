@@ -7,7 +7,7 @@ interface val EventError
 type OptionalEventHint is (EventHint | None)
 
 
-trait Events[T: Any #send]
+trait Events[T: Any #read]
   """
   A basic event stream.
   """
@@ -73,11 +73,19 @@ trait Events[T: Any #send]
     """
     let o: Observer[T] = BuildObserver[T].of_except(except_handler)
     on_reaction(o)
-
+/*
+  fun ref mutate[M: Any ref](
+    mutable: Mutable[M],
+    mutator: {(M, T)})
+    : Subscription
+  =>
+    let o: Observer[T] = BuildObserver[T].that_mutates[M](mutable, mutator)
+    on_reaction(o)
+*/
 
 // TODO: Push
 // - Possibility of having references to observers that are no longer reachable?
-trait Push[T: Any #send] is Events[T]
+trait Push[T: Any #read] is Events[T]
   """ Default Implementation of an event stream. """
   // Push state accessors ...
   fun ref get_observers(): (SetIs[Observer[T]] | None)
@@ -125,25 +133,13 @@ trait Push[T: Any #send] is Events[T]
       if observers.size() == 0 then set_observers(None) end
     end
 
-  fun ref react_all(value: T, hint: EventHint) =>
+  fun ref react_all(value: T, hint: (EventHint | None) = None) =>
     """ Send a `react` event to all observers """
-
-    // FIXME: How to deal with value that needs to be consumed to all observers. Clone? / Enforce a single observer? / Enforce #share instead of send?
-
-    // Consume value directly when there's a single observer, otherwise clone?
-
-    // Or consume to first observer, send tag to others when T is iso?
-
     match get_observers()
     | let observers: SetIs[Observer[T]] =>
-      if observers.size() == 1 then
-        try observers.index(0)?.react(consume value, hint) end
-      else
-        // SetIs not ordered though, must keep sep
-        for observer in observers.values() do
-          None
-          // observer.react(consume value, hint)
-        end
+      for observer in observers.values() do
+        None
+        observer.react(value, hint)
       end
     end
 
@@ -169,9 +165,8 @@ trait Push[T: Any #send] is Events[T]
     set_observers(None)
 
 
-
-// type Emitter[T: Any #send] is (Push[T] & Events[T] & Observer[T])
-class Emitter[T: Any #send] is (Push[T] & Events[T] & Observer[T])
+// type Emitter[T: Any #read] is (Push[T] & Events[T] & Observer[T])
+class Emitter[T: Any #read] is (Push[T] & Events[T] & Observer[T])
   """
   An event source that emits events when `react`, `except`, or `unreact` is called. Emitters are simultaneously an event stream and observer.
   """
@@ -189,7 +184,7 @@ class Emitter[T: Any #send] is (Push[T] & Events[T] & Observer[T])
   // Observer ...
   fun ref react(value: T, hint: (EventHint | None) = None) =>
     if not _get_events_unreacted() then
-      react_all(consume value, hint)
+      react_all(value, hint)
     end
 
   fun ref except(x: EventError) =>
@@ -203,12 +198,56 @@ class Emitter[T: Any #send] is (Push[T] & Events[T] & Observer[T])
     end
 
 
+// TODO: Mutable - This is broken, need to reconcile M, T
+//    It would normally be a Push[M] & Events[M], but M is needed to be ref,
+//    but T is #read :/ This kinda requires T to be Any ref
+//    Maybe require M to be a persistant DS.., but then can't reassign content,
+//    unless mutate operators can be adjusted to reassign to content.
+class Mutable[M: Any ref] is (Push[M] & Events[M])
+  """
+  An event stream that emits events when the underlying mutable object is modified.
+  """
+  // Push state
+  var _observers: (SetIs[Observer[M]] | None) = None
+  var _events_unreacted: Bool = false
+  // Underlying Mutable state
+  var content: M ref
+
+  new create(content': M) =>
+    content = content'
+
+  // Implemented state accessors
+  fun ref get_observers(): (SetIs[Observer[M]] | None) => _observers
+  fun ref set_observers(observers: (SetIs[Observer[M]] | None)) =>
+    _observers = observers
+  fun _get_events_unreacted(): Bool => _events_unreacted
+  fun ref _set_events_unreacted(value: Bool) => _events_unreacted = value
+
+
+class Never[T: Any #read] is Events[T]
+  """
+  An event source that never emits events. Subscribers immediately `unreact`.
+  """
+  fun ref on_reaction(observer: Observer[T]): Subscription =>
+    observer.unreact()
+    BuildSubscription.empty()
+
+
 // TODO: BuildEvents docstring
 primitive BuildEvents
   """"""
 
-  fun emitter[T: Any #send](): Emitter[T] =>
+  fun emitter[T: Any #read](): Emitter[T] =>
     """
     An event source that emits events when `react`, `except`, or `unreact` is called. Emitters are simultaneously an event stream and observer.
     """
     Emitter[T]
+
+  fun mutable[M: Any ref](content: M): Mutable[M] =>
+    Mutable[M](content)
+
+  fun never[T: Any #read](): Never[T] =>
+    """
+    An event source that never emits events. Subscribers immediately `unreact`.
+    """
+    Never[T]
