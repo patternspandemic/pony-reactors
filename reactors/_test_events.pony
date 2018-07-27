@@ -302,6 +302,11 @@ class iso _TestEventsBatch is UnitTest
   fun ref apply(h: TestHelper) => h.fail("not implemented")
 
 
+class iso _TestEventsChanged is UnitTest
+  fun name():String => "NI/events/Changed"
+  fun ref apply(h: TestHelper) => h.fail("not implemented")
+
+
 class iso _TestEventsCollect is UnitTest
   fun name():String => "NI/events/Collect"
   fun ref apply(h: TestHelper) => h.fail("not implemented")
@@ -327,6 +332,16 @@ class iso _TestEventsCount is UnitTest
   fun ref apply(h: TestHelper) => h.fail("not implemented")
 
 
+class iso _TestEventsDefer is UnitTest
+  fun name():String => "NI/events/Defer"
+  fun ref apply(h: TestHelper) => h.fail("not implemented")
+
+
+class iso _TestEventsDone is UnitTest
+  fun name():String => "NI/events/Done"
+  fun ref apply(h: TestHelper) => h.fail("not implemented")
+
+
 class iso _TestEventsDrop is UnitTest
   fun name():String => "NI/events/Drop"
   fun ref apply(h: TestHelper) => h.fail("not implemented")
@@ -339,6 +354,11 @@ class iso _TestEventsDropAfter is UnitTest
 
 class iso _TestEventsDropWhile is UnitTest
   fun name():String => "NI/events/DropWhile"
+  fun ref apply(h: TestHelper) => h.fail("not implemented")
+
+
+class iso _TestEventsEach is UnitTest
+  fun name():String => "NI/events/Each"
   fun ref apply(h: TestHelper) => h.fail("not implemented")
 
 
@@ -372,6 +392,11 @@ class iso _TestEventsIncremental is UnitTest
   fun ref apply(h: TestHelper) => h.fail("not implemented")
 
 
+class iso _TestEventsLast is UnitTest
+  fun name():String => "NI/events/Last"
+  fun ref apply(h: TestHelper) => h.fail("not implemented")
+
+
 class iso _TestEventsLiftTry is UnitTest
   fun name():String => "NI/events/LiftTry"
   fun ref apply(h: TestHelper) => h.fail("not implemented")
@@ -382,6 +407,9 @@ class iso _TestEventsMap is UnitTest
   fun ref apply(h: TestHelper) => h.fail("not implemented")
 
 
+class iso _TestEventsMaterialize is UnitTest
+  fun name():String => "NI/events/Materialize"
+  fun ref apply(h: TestHelper) => h.fail("not implemented")
 
 
 class iso _TestEventsMutate1 is UnitTest
@@ -440,6 +468,11 @@ class iso _TestEventsOnce is UnitTest
   fun ref apply(h: TestHelper) => h.fail("not implemented")
 
 
+class iso _TestEventsPartition is UnitTest
+  fun name():String => "NI/events/Partition"
+  fun ref apply(h: TestHelper) => h.fail("not implemented")
+
+
 class iso _TestEventsPipe is UnitTest
   fun name():String => "NI/events/Pipe"
   fun ref apply(h: TestHelper) => h.fail("not implemented")
@@ -457,6 +490,16 @@ class iso _TestEventsRecover is UnitTest
 
 class iso _TestEventsReducePast is UnitTest
   fun name():String => "NI/events/ReducePast"
+  fun ref apply(h: TestHelper) => h.fail("not implemented")
+
+
+class iso _TestEventsRepeat is UnitTest
+  fun name():String => "NI/events/Repeat"
+  fun ref apply(h: TestHelper) => h.fail("not implemented")
+
+
+class iso _TestEventsReverse is UnitTest
+  fun name():String => "NI/events/Reverse"
   fun ref apply(h: TestHelper) => h.fail("not implemented")
 
 
@@ -500,6 +543,11 @@ class iso _TestEventsToCold is UnitTest
   fun ref apply(h: TestHelper) => h.fail("not implemented")
 
 
+class iso _TestEventsToDoneSignal is UnitTest
+  fun name():String => "NI/events/ToDoneSignal"
+  fun ref apply(h: TestHelper) => h.fail("not implemented")
+
+
 class iso _TestEventsToEager is UnitTest
   fun name():String => "NI/events/ToEager"
   fun ref apply(h: TestHelper) => h.fail("not implemented")
@@ -507,6 +555,11 @@ class iso _TestEventsToEager is UnitTest
 
 class iso _TestEventsToEmpty is UnitTest
   fun name():String => "NI/events/ToEmpty"
+  fun ref apply(h: TestHelper) => h.fail("not implemented")
+
+
+class iso _TestEventsToEventBuffer is UnitTest
+  fun name():String => "NI/events/ToEventBuffer"
   fun ref apply(h: TestHelper) => h.fail("not implemented")
 
 

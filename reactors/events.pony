@@ -6,7 +6,7 @@ interface val EventError
 
 type OptionalEventHint is (EventHint | None)
 
-
+// TODO: Events - Fill out docstring
 trait Events[T: Any #read]
   """
   A basic event stream.
@@ -207,6 +207,7 @@ class Emitter[T: Any #read] is (Push[T] & Events[T] & Observer[T])
     end
 
 // TODO: Mutable - Try to make this safer by requiring the mutator replace content with val versions, makeing the only way to easily update the signal to go through the mutate observer protocol. So instead of allowing content to be directly mutable (ref), allow it to be (val) replaced by the mutator.
+// TODO: Mutable - Fill out docstring
 class Mutable[M: Any ref] is (Push[M] & Events[M])
   """
   An event stream that emits an underlying mutable object as its event values
@@ -261,3 +262,11 @@ primitive BuildEvents
     An event source that never emits events. Subscribers immediately `unreact`.
     """
     Never[T]
+
+  /*
+  apply
+  mux
+  union
+  sync
+  single
+  */
