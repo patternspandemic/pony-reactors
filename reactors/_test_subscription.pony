@@ -3,7 +3,7 @@ use "ponytest"
 class iso _TestSubscription is UnitTest
   var unsubscribe_cnt: U8 = U8(0)
 
-  fun name():String => "subscription"
+  fun name():String => "subscription/base"
 
   fun ref apply(h: TestHelper) =>
 
@@ -67,3 +67,28 @@ class iso _TestSubscription is UnitTest
 
   fun ref inc_unsubscribe_cnt() =>
     unsubscribe_cnt = unsubscribe_cnt + 1
+
+
+class iso _TestSubscriptionEmpty is UnitTest
+  fun name():String => "NI/subscription/empty"
+  fun ref apply(h: TestHelper) => h.fail("not implemented")
+
+
+class iso _TestSubscriptionComposite is UnitTest
+  fun name():String => "NI/subscription/composite"
+  fun ref apply(h: TestHelper) => h.fail("not implemented")
+
+
+class iso _TestSubscriptionProxy is UnitTest
+  fun name():String => "NI/subscription/proxy"
+  fun ref apply(h: TestHelper) => h.fail("not implemented")
+
+
+class iso _TestSubscriptionCollection is UnitTest
+  fun name():String => "NI/subscription/collection"
+  fun ref apply(h: TestHelper) => h.fail("not implemented")
+
+
+class iso _TestSubscriptionCell is UnitTest
+  fun name():String => "NI/subscription/cell"
+  fun ref apply(h: TestHelper) => h.fail("not implemented")

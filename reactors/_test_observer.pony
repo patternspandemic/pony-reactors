@@ -39,3 +39,6 @@ class iso _TestObserver is UnitTest
     o.react(true, _ObserverTestHint)
     o.except(_ObserverTestEventError)
     o.unreact()
+
+
+// TODO: Test other BuildObserver methods? They should be tested via higher level Events functionality.
