@@ -14,3 +14,4 @@ actor Main is TestList
     test(_TestSubscription)
     // Events Tests
     test(_TestEventsEmitterImmediatelyUnreactToClosed)
+    test(_TestEventsOnReaction)
