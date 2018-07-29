@@ -397,9 +397,12 @@ class iso _TestEventsLast is UnitTest
   fun ref apply(h: TestHelper) => h.fail("not implemented")
 
 
+/*
+// Scala specific
 class iso _TestEventsLiftTry is UnitTest
   fun name():String => "NI/events/LiftTry"
   fun ref apply(h: TestHelper) => h.fail("not implemented")
+*/
 
 
 class iso _TestEventsMap is UnitTest
@@ -588,9 +591,12 @@ class iso _TestEventsUnion is UnitTest
   fun ref apply(h: TestHelper) => h.fail("not implemented")
 
 
+/*
+// Scala specific
 class iso _TestEventsUnliftTry is UnitTest
   fun name():String => "NI/events/UnliftTry"
   fun ref apply(h: TestHelper) => h.fail("not implemented")
+*/
 
 
 class iso _TestEventsUnreacted is UnitTest

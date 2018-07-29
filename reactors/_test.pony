@@ -54,7 +54,7 @@ actor Main is TestList
     test(_TestEventsIgnoreExceptions) // Needed?
     test(_TestEventsIncremental)
     test(_TestEventsLast)
-    test(_TestEventsLiftTry)
+    // test(_TestEventsLiftTry) // Scala specific
     test(_TestEventsMap)
     test(_TestEventsMaterialize)
     test(_TestEventsMutate1)
@@ -86,7 +86,7 @@ actor Main is TestList
     test(_TestEventsToSignal)
     test(_TestEventsUnionStreams)
     test(_TestEventsUnion)
-    test(_TestEventsUnliftTry)
+    // test(_TestEventsUnliftTry) // Scala specific
     test(_TestEventsUnreacted)
     test(_TestEventsUntil)
     test(_TestEventsZipHint)

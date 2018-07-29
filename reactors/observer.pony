@@ -25,6 +25,54 @@ trait Observer[T: Any #read]
     None
 
 
+class AfterObserver[T: Any #read] is Observer[T]
+  """"""
+  let target: Observer[T]
+  var started: Bool = false
+  var live: Bool = true
+
+  new create(target': Observer[T]) =>
+    target = target'
+
+  fun ref react(value: T, hint: (EventHint | None) = None) =>
+    if started then target.react(value, hint) end
+
+  fun ref except(x: EventError) => target.except(x)
+
+  fun ref unreact() => try_unreact()
+
+  fun ref try_unreact() =>
+    if live then
+      live = false
+      target.unreact()
+    end
+
+
+class AfterThatObserver[T: Any #read, S: Any #read] is Observer[T]
+  """"""
+  let after_observer: AfterObserver[S]
+  var subscription: Subscription = BuildSubscription.empty()
+
+  new create(after_observer': AfterObserver[S]) =>
+    after_observer = after_observer'
+
+  fun ref react(value: T, hint: (EventHint | None) = None) =>
+    if not after_observer.started then
+      after_observer.started = true
+      subscription.unsubscribe()
+    end
+
+  fun ref except(x: EventError) =>
+    if not after_observer.started then
+      after_observer.target.except(x)
+    end
+
+  fun ref unreact() =>
+    if not after_observer.started then
+      after_observer.try_unreact()
+    end
+
+
 primitive BuildObserver[T: Any #read]
   """ Observer Builder  """
   
@@ -43,6 +91,18 @@ primitive BuildObserver[T: Any #read]
       fun ref except(x: EventError) => except'(x)
       fun ref unreact() => unreact'()
     end
+
+  fun after(
+    target': Observer[T])
+    : AfterObserver[T]
+  =>
+    AfterObserver[T](target')
+
+  fun after_that[S: Any #read](
+    after_observer': AfterObserver[S])
+    : AfterThatObserver[T, S]
+  =>
+    AfterThatObserver[T, S](after_observer')
 
   fun of_react_and_unreact(
     react': {ref (T, (EventHint | None))},

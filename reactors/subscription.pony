@@ -28,6 +28,27 @@ trait Subscription
     })
 
 
+class Composite is Subscription
+  """
+  A subscription composed of several subscriptions. When unsubscribed, all
+  component subscriptions get unsubscribed.
+  """
+  let subscriptions: Array[Subscription]
+  var unsubscribed: Bool = false
+
+  new create(subscriptions': Array[Subscription]) =>
+    subscriptions = subscriptions'
+
+  fun _is_unsubscribed(): Bool =>
+    unsubscribed
+
+  fun ref unsubscribe() =>
+    for s in subscriptions.values() do
+      s.unsubscribe()
+      unsubscribed = true
+    end
+
+
 primitive BuildSubscription
   """ Subscription Builder """
 
@@ -59,9 +80,11 @@ primitive BuildSubscription
       fun _is_unsubscribed(): Bool => true
     end
 
+  fun composite(subscriptions': Array[Subscription]): Subscription =>
+    """ A subscription composed of many subscriptions. """
+    Composite(subscriptions')
+
 // TODO: Subscription Implementations
-//  empty (singleton)
-//  Composite
 //  Proxy (trait for a thing that defers to a subscription it has)
 //  Collection (mutable version of Composite?)
 //  Cell (mutable cell of at most one subscription)

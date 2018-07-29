@@ -74,6 +74,11 @@ trait Events[T: Any #read]
     let o: Observer[T] = BuildObserver[T].of_except(except_handler)
     on_reaction(o)
 
+  // TODO: Events.after docsctring, and related class docstrings
+  fun ref after[S: Any #read](that: Events[S]): Events[T] =>
+    """"""
+    _After[T, S](this, that)
+
   fun ref mutate[C: Any ref](
     mutable: Mutable[C],
     mutator: {ref (C, T)})
@@ -173,6 +178,26 @@ trait Push[T: Any #read] is Events[T]
     | None => false
     | let _: SetIs[Observer[T]] => true
     end
+
+
+class _After[T: Any #read, S: Any #read] is Events[T]
+  """"""
+  let self: Events[T]
+  let that: Events[S]
+
+  new create(self': Events[T], that': Events[S]) =>
+    self = self'
+    that = that'
+
+  fun ref on_reaction(observer: Observer[T]): Subscription =>
+    let after_observer: AfterObserver[T] =
+      BuildObserver[T].after(observer)
+    let after_that_observer: AfterThatObserver[S, T] =
+      BuildObserver[S].after_that[T](after_observer)
+    let sub: Subscription = self.on_reaction(after_observer)
+    let sub_that: Subscription = that.on_reaction(after_that_observer)
+    after_that_observer.subscription = sub_that
+    BuildSubscription.composite([sub; sub_that])
 
 
 class Emitter[T: Any #read] is (Push[T] & Events[T] & Observer[T])
