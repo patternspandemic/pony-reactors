@@ -1,4 +1,5 @@
 use "ponytest"
+use "collections"
 
 // primitive _TestHint is EventHint
 primitive _SomeTestEventError is EventError
@@ -9,6 +10,31 @@ primitive _OtherTestEventError is EventError
 // TODO: _TestEventsPush? Its functionality tested through other event tests.
 // TODO: _TestEventsEmitter? Its functionality tested through other event tests.
 // TODO: _TestEventsMutable? Its functionality tested through mutate eventtests.
+
+class _TestEmitter[T: Any #read] is (Push[T] & Events[T] & Observer[T])
+  let _emitter: Emitter[T] = BuildEvents.emitter[T]()
+  var unsubscription_count: U32 = 0
+
+  fun ref on_reaction(observer: Observer[T]): Subscription =>
+    let self = this
+    BuildSubscription.composite([
+      _emitter.on_reaction(observer)
+      BuildSubscription({ref () =>
+        self.unsubscription_count = self.unsubscription_count + 1})
+    ])
+
+  fun ref react(value: T, hint: (EventHint | None) = None) =>
+    _emitter.react(value, hint)
+  fun ref except(x: EventError) => _emitter.except(x)
+  fun ref unreact() => _emitter.unreact()
+  fun ref get_observers(): (SetIs[Observer[T]] | None) =>
+    _emitter.get_observers()
+  fun ref set_observers(observers: (SetIs[Observer[T]] | None)) =>
+    _emitter.set_observers(observers)
+  fun _get_events_unreacted(): Bool => _emitter._get_events_unreacted()
+  fun ref _set_events_unreacted(value: Bool) =>
+    _emitter._set_events_unreacted(value)
+
 
 class iso _TestEventsNever is UnitTest
   var unreacted: Bool = false
@@ -293,8 +319,36 @@ class iso _TestEventsOnExcept is UnitTest
 
 
 class iso _TestEventsAfter is UnitTest
-  fun name():String => "NI/events/After"
-  fun ref apply(h: TestHelper) => h.fail("not implemented")
+  var seen: Bool = false
+
+  fun name():String => "events/after"
+
+  fun ref apply(h: TestHelper) =>
+    let self = this
+    let emitter = BuildEvents.emitter[U32]()
+    let start = BuildEvents.emitter[None]()
+    let after = emitter.after[None](start)
+    after.on(
+      where
+        react_handler = {
+          () => self.seen = true
+        }
+    )
+
+    h.assert_false(seen)
+    emitter.react(7)
+    h.assert_false(seen)
+    start.react(None)
+    h.assert_false(seen)
+    emitter.react(11)
+    h.assert_true(seen)
+
+    // Ensure unsubscribe from start after observing reaction
+    let start': _TestEmitter[U32] ref = _TestEmitter[U32]
+    emitter.after[U32](start').on({ref () => None})
+    h.assert_eq[U32](0, start'.unsubscription_count)
+    start'.react(1)
+    h.assert_eq[U32](1, start'.unsubscription_count)
 
 
 class iso _TestEventsBatch is UnitTest
