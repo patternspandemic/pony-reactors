@@ -74,9 +74,13 @@ trait Events[T: Any #read]
     let o: Observer[T] = BuildObserver[T].of_except(except_handler)
     on_reaction(o)
 
-  // TODO: Events.after docsctring, and related class docstrings
   fun ref after[S: Any #read](that: Events[S]): Events[T] =>
-    """"""
+    """
+    Creates a new event stream that produces events from this event stream only
+    after the event stream `that` produces an event. If `that` unreacts before
+    it produces an event, the resulting event stream unreacts. If this event
+    stream unreacts, the resulting event stream unreacts.
+    """
     _After[T, S](this, that)
 
   fun ref mutate[C: Any ref](
@@ -147,7 +151,6 @@ trait Push[T: Any #read] is Events[T]
     match get_observers()
     | let observers: SetIs[Observer[T]] =>
       for observer in observers.values() do
-        None
         observer.react(value, hint)
       end
     end
@@ -181,7 +184,11 @@ trait Push[T: Any #read] is Events[T]
 
 
 class _After[T: Any #read, S: Any #read] is Events[T]
-  """"""
+  """
+  An event stream that produces events from `self` only after a react event is
+  produced from `that`. Unreacts when `self` unreacts, or when `that` unreacts
+  before producing a react event.
+  """
   let self: Events[T]
   let that: Events[S]
 
@@ -190,10 +197,10 @@ class _After[T: Any #read, S: Any #read] is Events[T]
     that = that'
 
   fun ref on_reaction(observer: Observer[T]): Subscription =>
-    let after_observer: AfterObserver[T] =
-      BuildObserver[T].after(observer)
-    let after_that_observer: AfterThatObserver[S, T] =
-      BuildObserver[S].after_that[T](after_observer)
+    let after_observer: _AfterObserver[T] =
+      BuildObserver[T]._after(observer)
+    let after_that_observer: _AfterThatObserver[S, T] =
+      BuildObserver[S]._after_that[T](after_observer)
     let sub: Subscription = self.on_reaction(after_observer)
     let sub_that: Subscription = that.on_reaction(after_that_observer)
     after_that_observer.subscription = sub_that

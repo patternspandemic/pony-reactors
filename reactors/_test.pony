@@ -32,8 +32,15 @@ actor Main is TestList
     test(_TestEventsOnDone)
     test(_TestEventsOnDoneUnsubscribe)
     test(_TestEventsOnExcept)
+
     /* - combinators */
-    test(_TestEventsAfter)
+
+      // After
+      test(_TestEventsAfter)
+      test(_TestEventsAfterUnreactsWithThis)
+      test(_TestEventsAfterUnreactsWithThat)
+      test(_TestEventsAfterUnsubscribesThat)
+
     test(_TestEventsBatch)
     test(_TestEventsChanged)
     test(_TestEventsCollect)

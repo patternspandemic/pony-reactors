@@ -321,20 +321,16 @@ class iso _TestEventsOnExcept is UnitTest
 class iso _TestEventsAfter is UnitTest
   var seen: Bool = false
 
-  fun name():String => "events/after"
+  fun name():String => "events/after/basic"
 
   fun ref apply(h: TestHelper) =>
     let self = this
     let emitter = BuildEvents.emitter[U32]()
     let start = BuildEvents.emitter[None]()
     let after = emitter.after[None](start)
-    after.on(
-      where
-        react_handler = {
-          () => self.seen = true
-        }
-    )
+    after.on({ref () => self.seen = true})
 
+    // Test basic after behavior
     h.assert_false(seen)
     emitter.react(7)
     h.assert_false(seen)
@@ -343,12 +339,58 @@ class iso _TestEventsAfter is UnitTest
     emitter.react(11)
     h.assert_true(seen)
 
+
+class iso _TestEventsAfterUnreactsWithThis is UnitTest
+  var unreacted: Bool = false
+
+  fun name():String => "events/after/unreacts with this"
+
+  fun ref apply(h: TestHelper) =>
+    let self = this
+    let emitter = BuildEvents.emitter[U32]()
+    let start = BuildEvents.emitter[None]()
+    let after = emitter.after[None](start)
+    after.on_done({ref () => self.unreacted = true})
+
+    // Ensure `after` unreacts when `emitter` unreacts
+    h.assert_false(unreacted)
+    emitter.unreact()
+    h.assert_true(unreacted)
+
+
+class iso _TestEventsAfterUnreactsWithThat is UnitTest
+  var unreacted: Bool = false
+
+  fun name():String => "events/after/unreacts with that"
+
+  fun ref apply(h: TestHelper) =>
+    let self = this
+    let emitter = BuildEvents.emitter[U32]()
+    let start = BuildEvents.emitter[None]()
+    let after = emitter.after[None](start)
+    after.on_done({ref () => self.unreacted = true})
+
+    // Ensure `after` unreacts when `start` unreacts before producing
+    h.assert_false(unreacted)
+    start.unreact() // Unreact without producing
+    h.assert_true(unreacted)
+
+
+class iso _TestEventsAfterUnsubscribesThat is UnitTest
+  fun name():String => "events/after/unsubscribes to that after it produces"
+
+  fun ref apply(h: TestHelper) =>
+    let emitter = BuildEvents.emitter[None]()
+    let start: _TestEmitter[None] ref = _TestEmitter[None]
+    let after = emitter.after[None](start)
+
+    // At least one observer needed to propogate, hence call to `on`
+    after.on({ref () => None})
+
     // Ensure unsubscribe from start after observing reaction
-    let start': _TestEmitter[U32] ref = _TestEmitter[U32]
-    emitter.after[U32](start').on({ref () => None})
-    h.assert_eq[U32](0, start'.unsubscription_count)
-    start'.react(1)
-    h.assert_eq[U32](1, start'.unsubscription_count)
+    h.assert_eq[U32](0, start.unsubscription_count)
+    start.react(None)
+    h.assert_eq[U32](1, start.unsubscription_count)
 
 
 class iso _TestEventsBatch is UnitTest

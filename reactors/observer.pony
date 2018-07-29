@@ -25,8 +25,8 @@ trait Observer[T: Any #read]
     None
 
 
-class AfterObserver[T: Any #read] is Observer[T]
-  """"""
+class _AfterObserver[T: Any #read] is Observer[T]
+  """ Helper observer for `_After` event streams. """
   let target: Observer[T]
   var started: Bool = false
   var live: Bool = true
@@ -48,12 +48,12 @@ class AfterObserver[T: Any #read] is Observer[T]
     end
 
 
-class AfterThatObserver[T: Any #read, S: Any #read] is Observer[T]
-  """"""
-  let after_observer: AfterObserver[S]
+class _AfterThatObserver[T: Any #read, S: Any #read] is Observer[T]
+  """ Helper observer for `_After` event streams. """
+  let after_observer: _AfterObserver[S]
   var subscription: Subscription = BuildSubscription.empty()
 
-  new create(after_observer': AfterObserver[S]) =>
+  new create(after_observer': _AfterObserver[S]) =>
     after_observer = after_observer'
 
   fun ref react(value: T, hint: (EventHint | None) = None) =>
@@ -92,17 +92,17 @@ primitive BuildObserver[T: Any #read]
       fun ref unreact() => unreact'()
     end
 
-  fun after(
+  fun _after(
     target': Observer[T])
-    : AfterObserver[T]
+    : _AfterObserver[T]
   =>
-    AfterObserver[T](target')
+    _AfterObserver[T](target')
 
-  fun after_that[S: Any #read](
-    after_observer': AfterObserver[S])
-    : AfterThatObserver[T, S]
+  fun _after_that[S: Any #read](
+    after_observer': _AfterObserver[S])
+    : _AfterThatObserver[T, S]
   =>
-    AfterThatObserver[T, S](after_observer')
+    _AfterThatObserver[T, S](after_observer')
 
   fun of_react_and_unreact(
     react': {ref (T, (EventHint | None))},
