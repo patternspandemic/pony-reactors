@@ -1,0 +1,4 @@
+
+trait SysEvent
+
+class ReactorSystem

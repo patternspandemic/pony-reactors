@@ -58,7 +58,7 @@ actor Main is TestList
     test(_TestEventsFirst)
     test(_TestEventsGet)
     test(_TestEventsGroupBy)
-    test(_TestEventsIgnoreExceptions) // Needed?
+    test(_TestEventsIgnoreExceptions) // Rename IgnoreExcept
     test(_TestEventsIncremental)
     test(_TestEventsLast)
     // test(_TestEventsLiftTry) // Scala specific
@@ -72,7 +72,7 @@ actor Main is TestList
     test(_TestEventsPartition)
     test(_TestEventsPipe)
     test(_TestEventsPossibly)
-    test(_TestEventsRecover)
+    test(_TestEventsRecover) // May need to rename, RecoverExcept
     test(_TestEventsReducePast)
     test(_TestEventsRepeat)
     test(_TestEventsReverse)
