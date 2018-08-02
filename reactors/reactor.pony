@@ -1,8 +1,5 @@
 
-/*
-A reactor may also have to have a collection of match tests for C?
-Looking more like will need separate be's for each send cap, _in_val, _in_iso, _in_tag...
-*/
+primitive ReactorSystemTag
 
 trait Reactor[E: Any #send]
   """"""
@@ -10,19 +7,22 @@ trait Reactor[E: Any #send]
 
     fun ref sys_events(): Events[SysEvent]
 
-    fun system(): ReactorSystem
+    fun ref system(): ReactorSystem
 
-    // Needed channel receives:
-    //  - default
-    //  - system events
-    //  - opened/additional reactor channels
-    //  - one off reply channels
+    fun tag default_sink(event: E) =>
+      """ The reactor's default channel sink. """
+      _muxed_sink[E](this, consume event)
 
-    fun tag default(event: E) =>
-      _in[E](this, consume event)
+    fun tag _system_event_sink(event: E) =>
+      """ The reactor's system events channel sink. """
+      _muxed_sink[E](ReactorSystemTag, consume event)
 
-    be _in[T: (Any #send | E)](channel_label: Any tag, event: T) =>
-      """ The reactor's router for events sent to any of its channels. """
+    be _muxed_sink[T: (Any #send | E)](channel_tag: Any tag, event: T) =>
+      """
+      The reactor's multiplexed sink for events sent to any of its channels.
+      This behavior acts as a router for all events sent to the reactor,
+      ensuring they make their way to the channel's corresponding emitter.
+      """
       iftype T <: Any iso then
         None
       elseif T <: Any val then

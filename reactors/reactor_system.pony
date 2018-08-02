@@ -1,4 +1,4 @@
 
 trait SysEvent
 
-class ReactorSystem
+actor ReactorSystem
