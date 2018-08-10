@@ -1,12 +1,15 @@
 
 primitive ReactorSystemTag
 
+/* Reactors will need functionality to open channels themselves. They'll then have to push any such channels they want public to the channels service. */
+
 trait Reactor[E: Any #send]
   """"""
     fun ref main(): Connector[E]
 
     fun ref sys_events(): Events[SysEvent]
 
+    // TODO: Reactor.system - Use of the system must be partially applied with this reactor. The value of this reactor should then be propogated to each service, for instance to create the proper channels for service values to make their way back to the reactor. Or maybe this value is a wrapper around a ReactorSystem val, 
     fun ref system(): ReactorSystem
 
     fun tag default_sink(event: E) =>
@@ -31,7 +34,29 @@ trait Reactor[E: Any #send]
         None
       end
 
+
+primitive BuildReactor[T: Any #send]
+  """"""
+  fun apply(body: {(Reactor[T])}) =>
+    // ...
+    None
+
 ///////////////////////////////////////
+
+/*
+BuildReactor[String](
+  object
+    fun apply(self: Reactor[String]) =>
+      self.main.events.on_event({(ev: String) => ... }
+  end
+)
+
+BuildReactor[String]({
+  (self: Reactor[String]) =>
+    self.main.events.on_event({(ev: String) => ... })}
+)
+*/
+
 // Reference Code
 /*
 
