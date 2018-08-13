@@ -1,4 +1,6 @@
 
+class tag ChannelTag
+
 trait val Channel[E: Any #send]
   """
   Channels are the conduit of inter-reactor event propogation, and introduce
@@ -10,3 +12,6 @@ trait val Channel[E: Any #send]
   """
     fun shl(event: E)
       """ Send a single event on this channel. """
+
+    fun tag channel_tag(): ChannelTag tag
+      """ Retrieve the unique identifier for this channel. """

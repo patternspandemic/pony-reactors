@@ -1,45 +1,129 @@
 
 primitive ReactorSystemTag
 
+
+class ReactorState[T: Any #send]
+  """ An object which manages internal state of a reactor. """
+  // Should also be able to supply the real system, to allow for creating reactors within actors.
+  let system: ReactorSystem tag
+  let system_proxy: ReactorSystemProxy
+  let main_connector: Connector[T]
+  let system_events: Events[SysEvent]
+  let connectors: MapIs[ChannelTag tag, Connector[Any]]
+
+
 /* Reactors will need functionality to open channels themselves. They'll then have to push any such channels they want public to the channels service. */
+
+/* Provide a ReactorState helper object to automate creation of needed  */
 
 trait Reactor[E: Any #send]
   """"""
-    fun ref main(): Connector[E]
+    fun ref reactor_state(): ReactorState
 
-    fun ref sys_events(): Events[SysEvent]
+    fun ref main(): Connector[E] =>
+      /*
+      let main_channel_tag = reactor_state().main_channel_tag
+      reactor_state().connectors(main_channel_tag)
+      */
+      reactor_state().main_connector
 
-    // TODO: Reactor.system - Use of the system must be partially applied with this reactor. The value of this reactor should then be propogated to each service, for instance to create the proper channels for service values to make their way back to the reactor. Or maybe this value is a wrapper around a ReactorSystem val, 
-    fun ref system(): ReactorSystem
+    fun ref sys_events(): Events[SysEvent] =>
+      reactor_state().system_events
+
+    // TODO: Reactor.system - Use of the system must be partially applied with this reactor. The value of this reactor should then be propogated to each service, for instance to create the proper channels for service values to make their way back to the reactor. Or maybe this value is a wrapper around a ReactorSystem val, a ReactorSystemProxy?
+    fun ref system(): ReactorSystemProxy =>
+      reactor_state().system_proxy
 
     fun tag default_sink(event: E) =>
       """ The reactor's default channel sink. """
-      _muxed_sink[E](this, consume event)
-
+      // _muxed_sink[E](this, consume event)
+      _muxed_sink[E](
+        reactor_state().main_connector.channel.channel_tag(),
+        consume event)
+    
+    // TODO: Reactor._system_event_sink - Replace ReactorSystemTag with actual system via the proxy
     fun tag _system_event_sink(event: E) =>
       """ The reactor's system events channel sink. """
       _muxed_sink[E](ReactorSystemTag, consume event)
 
-    be _muxed_sink[T: (Any #send | E)](channel_tag: Any tag, event: T) =>
+    // Extra channels, one time channels, in addition to above..
+    // be _muxed_sink[T: (Any #send | E)](channel_tag: Any tag, event: T) =>
+    be _muxed_sink[T: (Any #send | E)](channel_tag: ChannelTag tag, event: T) =>
       """
       The reactor's multiplexed sink for events sent to any of its channels.
       This behavior acts as a router for all events sent to the reactor,
       ensuring they make their way to the channel's corresponding emitter.
       """
       iftype T <: Any iso then
-        None
+        None // channel_tag lookup in reactor_state().connectors, push event to its stream..
       elseif T <: Any val then
         None
       elseif T <: Any tag then
         None
       end
+    
+    // TODO: Reactor.init - Ensure init'd only once
+    be _init()
+      """"""
+
+/* OLD
+// How to add state though?
+actor ProtoReactor[T: Any #send] is Reactor[T]
+  let name: String
+  let channel_name: String = "main"
+  let _default_connector: Connector
+  let _reactor_system: ReactorSystemProxy
+  let _connector_map: MapIs[Channel tag, Events[?]] // ?
+
+  fun open_connector or fun open_channel
+*/
+
+actor MyStringReactor is Reactor[String]
+  let _reactor_state: ReactorState
+  // Other custom reactor state ...
+
+  new create(
+    system: ReactorSystem,
+    name: String,
+    channel_name: String = "main")
+  =>
+    _reactor_state = ReactorState(system, this, name, channel_name)
+
+  fun ref reactor_state(): ReactorState => _reactor_state
+
+  // Called by default after reactor is registered with the system?
+  be _init() =>
+    main().events().on( ... /* Mod custom state */ ... )
+    let another = open("another_channel")
+    system().channels.register(another) // Or add as part of opening channels?
+    system().channels.unregister(another) // etc
 
 
-primitive BuildReactor[T: Any #send]
-  """"""
-  fun apply(body: {(Reactor[T])}) =>
-    // ...
-    None
+
+
+// ...
+let my_literal_string_reactor =
+  object is Reactor[String]
+    // let other = CustomState
+    let _reactor_state: ReactorState =
+      ReactorState(system, "my-literal-reactor")
+    fun ref reactor_state(): ReactorState = _reactor_state
+    be _init() =>
+      main().events.on(...)
+  end
+
+// Because can't yet refer to literals in construction, could let system setup the reactor state and callback to init?
+reactor_sys.spawn(my_literal_string_reactor) // Calls back to _init() ?
+reactor_sys.spawn(MyStringReactor, "name", "default-channel-name") // Could also be required with named reactors
+// spawn could maybe somehow inject the required ReactorState w/destructive read, then call _init, would require get/set_reactor_state, along with _reactor_state: (ReactorState | None) = None, matched in getters/setters.. 
+// ...
+
+
+// primitive BuildReactor[T: Any #send]
+//   """"""
+//   fun apply(body: {(Reactor[T])}) =>
+//     // ...
+//     None
 
 ///////////////////////////////////////
 
@@ -58,6 +142,65 @@ BuildReactor[String]({
 */
 
 // Reference Code
+/*
+
+
+trait Thing[E: Stringable #read]
+  fun ref main(): Array[E] ref
+  fun ref _env(): Env
+  be bar(body: {(Thing[E] ref)} val) =>
+    body(this)
+
+actor AnonThing[T: Stringable #read] is Thing[T]
+  let a: Array[T] ref = Array[T]
+  let env: Env
+  
+  new create(e: Env) =>
+    env = e
+  
+  fun ref main(): Array[T] ref => a
+  fun ref _env(): Env => env
+  
+
+actor Main
+  new create(env: Env) =>
+  
+    //let a': Array[String] iso = recover iso Array[String] end
+    
+    let o = object is Thing[String]
+      //let _a: Array[String] ref = consume a'
+      let a: Array[String] iso = recover Array[String] end
+      fun ref main(): Array[String] iso => a
+      fun ref _env(): Env => env
+      be other() => None // Appease
+    end
+    
+    o.bar({
+      (thing: Thing[String] ref) =>
+        thing.main().push("Pony")
+        thing._env().out.print(
+          try
+            thing.main().apply(0)?
+          else
+            "Bummer"
+          end)
+    })
+    
+    let anon = AnonThing[String](env)
+    anon.bar({
+      (thing: Thing[String] ref) =>
+        thing.main().push("Lang")
+        thing._env().out.print(
+          try
+            thing.main().apply(0)?
+          else
+            "Other Bummer"
+          end)
+    })
+*/
+
+///////////
+
 /*
 
 actor Doubler
