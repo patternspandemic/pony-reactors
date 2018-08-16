@@ -2,6 +2,9 @@ use "collections"
 
 trait SysEvent
 
+/*
+What if all these service accessors returned channels that took request event types, and returned their results to a one off reply channel of the reactor making the request?!
+*/
 trait Services
   fun channels(): Channels
   // fun clock(): Clock

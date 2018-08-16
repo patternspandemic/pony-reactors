@@ -2,6 +2,10 @@
 primitive ReactorSystemTag
 
 
+/*
+  - Track 'non-daemon' connectors, as to be able to 'terminate' the reactor when all such connectors are sealed. Basically make it so no other actors
+  can send messages to the reactor. Channels may be spread far, so it may require some kind of system event telling reactors that a channel is sealed, and therefor to drop val refs to them? (Part of the default ReactorState). But how does a reactor even access/drop channel references captured in event callbacks for instance? This may be a problem.
+*/
 class ReactorState[T: Any #send]
   """ An object which manages internal state of a reactor. """
   // Should also be able to supply the real system, to allow for creating reactors within actors.
@@ -9,7 +13,8 @@ class ReactorState[T: Any #send]
   let system_proxy: ReactorSystemProxy
   let main_connector: Connector[T]
   let system_events: Events[SysEvent]
-  let connectors: MapIs[ChannelTag tag, Connector[Any]]
+  // let connectors: MapIs[ChannelTag tag, Connector[Any]]
+  let connectors: MapIs[Any tag, Connector[Any]]
 
 
 /* Reactors will need functionality to open channels themselves. They'll then have to push any such channels they want public to the channels service. */
@@ -34,12 +39,18 @@ trait Reactor[E: Any #send]
     fun ref system(): ReactorSystemProxy =>
       reactor_state().system_proxy
 
+    fun tag shl(event: E) =>
+      """ Shortcut to use a reactor ref itself as its default channel. """
+      default_sink(event)
+
     fun tag default_sink(event: E) =>
       """ The reactor's default channel sink. """
-      // _muxed_sink[E](this, consume event)
+      /*
       _muxed_sink[E](
         reactor_state().main_connector.channel.channel_tag(),
         consume event)
+      */
+      _muxed_sink[E](this, consume event)
     
     // TODO: Reactor._system_event_sink - Replace ReactorSystemTag with actual system via the proxy
     fun tag _system_event_sink(event: E) =>
@@ -47,8 +58,8 @@ trait Reactor[E: Any #send]
       _muxed_sink[E](ReactorSystemTag, consume event)
 
     // Extra channels, one time channels, in addition to above..
-    // be _muxed_sink[T: (Any #send | E)](channel_tag: Any tag, event: T) =>
-    be _muxed_sink[T: (Any #send | E)](channel_tag: ChannelTag tag, event: T) =>
+    // be _muxed_sink[T: (Any #send | E)](channel_tag: ChannelTag tag, event: T) =>
+    be _muxed_sink[T: (Any #send | E)](channel_tag: Any tag, event: T) =>
       """
       The reactor's multiplexed sink for events sent to any of its channels.
       This behavior acts as a router for all events sent to the reactor,
@@ -98,7 +109,8 @@ actor MyStringReactor is Reactor[String]
     system().channels.register(another) // Or add as part of opening channels?
     system().channels.unregister(another) // etc
 
-
+let hello_reactor = HelloReactor
+hello_reactor << "Hello"
 
 
 // ...
@@ -116,6 +128,7 @@ let my_literal_string_reactor =
 reactor_sys.spawn(my_literal_string_reactor) // Calls back to _init() ?
 reactor_sys.spawn(MyStringReactor, "name", "default-channel-name") // Could also be required with named reactors
 // spawn could maybe somehow inject the required ReactorState w/destructive read, then call _init, would require get/set_reactor_state, along with _reactor_state: (ReactorState | None) = None, matched in getters/setters.. 
+// spawn would also be useful to receive back a channel to the reactor.
 // ...
 
 
