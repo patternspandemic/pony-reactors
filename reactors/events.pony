@@ -4,6 +4,7 @@ interface val EventHint
 interface val EventError
   fun apply(): String val
 
+// TODO: Remove OptionalEventHint - Probably unneeded.
 type OptionalEventHint is (EventHint | None)
 
 // TODO: Events - Fill out docstring

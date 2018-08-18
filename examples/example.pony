@@ -17,7 +17,7 @@ actor Welcomer is Reactor[String]
 
   be _init() =>
     main().events.on_event({
-      (name: String) =>
+      (name: String, hint: OptionalEventHint) =>
         _out.print("Welcome " + name + "!")
         main().seal()
     })
@@ -38,7 +38,7 @@ actor Main is Reactor[None]
     let conn = open()
     channels() << ChannelReserve(conn.channel, "welcomer")
     conn.events.on_event({
-      (res: (ChannelReservation | None)) =>
+      (res: (ChannelReservation | None), hint: OptionalEventHint) =>
         match res
         | let cr: ChannelReservation =>
           let welcomer = Welcomer(system, cr, env.out)
@@ -83,7 +83,7 @@ actor Main
           fun ref reactor_state(): ReactorState = _reactor_state
           be _init() =>
             main().events.on_event({
-              (name: String) =>
+              (name: String, hint: OptionalEventHint) =>
                 _out.print("Welcome " + name + "!")
             })
         end

@@ -9,7 +9,8 @@ actor ReactorSystem
   """
   A system used to create, track, and identify reactors.
   """
-  let _reactors: SetIs[Reactor[(Any iso | Any val | Any tag)]]
+  // let _reactors: SetIs[Reactor[(Any iso | Any val | Any tag)]]
+  let _reactors: SetIs[ReactorKind tag]
   let _services: SetIs[Service tag]
 
   // Standard System Services
@@ -79,7 +80,8 @@ actor ReactorSystem
   be _receive_service(service: Service tag) =>
     _services.set(service)
 
-  be _receive_reactor(reactor: Reactor[(Any iso | Any val | Any tag)] tag) =>
+  // be _receive_reactor(reactor: Reactor[(Any iso | Any val | Any tag)] tag) =>
+  be _receive_reactor(reactor: ReactorKind tag) =>
     _reactors.set(reactor)
 
   fun tag shutdown() =>

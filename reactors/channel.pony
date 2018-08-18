@@ -1,7 +1,11 @@
 
 class tag ChannelTag
 
-trait val Channel[E: Any #send]
+
+interface val ChannelKind
+
+
+trait val Channel[E: Any #send] is ChannelKind
   """
   Channels are the conduit of inter-reactor event propogation, and introduce
   communication paths into a reactor.

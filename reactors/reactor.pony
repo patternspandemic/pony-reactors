@@ -18,8 +18,9 @@ class ReactorState[T: Any #send]
   let main_connector: Connector[T]
   let register_main_channel: Bool
 //  let system_events: Events[SysEvent]
-  // let connectors: MapIs[ChannelTag tag, Connector[Any]]
-  let connectors: MapIs[Any tag, Connector[Any]]
+  // // let connectors: MapIs[ChannelTag tag, Connector[Any]]
+  // let connectors: MapIs[Any tag, Connector[Any]]
+  let connectors: MapIs[Any tag, ConnectorKind]
 
   new create(
     reactor': Reactor[T],
@@ -51,7 +52,7 @@ class ReactorState[T: Any #send]
           let _channel_tag: ChannelTag = ChannelTag
           fun channel_tag(): ChannelTag => _channel_tag
           fun shl(ev: T) =>
-            reactor.default_sink(ev)
+            reactor.default_sink(consume ev)
         end,
         events' = BuildEvents.emitter[T](),
         reactor_state' = this,
@@ -73,7 +74,10 @@ class ReactorState[T: Any #send]
     system._receive_reactor(reactor)
 
 
-trait Reactor[E: Any #send]
+interface tag ReactorKind
+
+
+trait tag Reactor[E: Any #send] is ReactorKind
   """"""
     fun ref reactor_state(): ReactorState[E]
 
@@ -97,7 +101,7 @@ trait Reactor[E: Any #send]
 
     fun tag shl(event: E) =>
       """ Shortcut to use a reactor reference itself as its default channel. """
-      default_sink(event)
+      default_sink(consume event)
 
     fun tag default_sink(event: E) =>
       """ The reactor's default channel sink. """
@@ -134,10 +138,10 @@ trait Reactor[E: Any #send]
     =>
       reactor_state().channels_service = channels_channel
       if reactor_state().register_main_channel then
-        channels() << ChannelRegister(
-          main().reservation,
-          main().channel
-        )
+        match main().reservation
+        | let cr: ChannelReservation =>
+          channels() << ChannelRegister(cr, main().channel)
+        end
       end
 
     // TODO: Reactor.init - Ensure init'd only once
@@ -151,13 +155,13 @@ trait Reactor[E: Any #send]
 BuildReactor[String](
   object
     fun apply(self: Reactor[String]) =>
-      self.main.events.on_event({(ev: String) => ... }
+      self.main.events.on_event({(ev: String, hint: OptionalEventHint) => ... }
   end
 )
 
 BuildReactor[String]({
   (self: Reactor[String]) =>
-    self.main.events.on_event({(ev: String) => ... })}
+    self.main.events.on_event({(ev: String, hint: OptionalEventHint) => ... })}
 )
 */
 

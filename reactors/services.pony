@@ -19,13 +19,13 @@ primitive ChannelsService is ServiceBuilder
   fun apply(system: ReactorSystem tag): Channels =>
     Channels(system)
 
-class ChannelReserve
+class val ChannelReserve
   """"""
   let reactor_name: String
   let channel_name: String
-  let reply_channel: Channel[(ChannelReservation | None)] val
+  let reply_channel: Channel[(ChannelReservation val | None)] val
   new val create(
-    reply_channel': Channel[(ChannelReservation | None)] val,
+    reply_channel': Channel[(ChannelReservation val | None)] val,
     reactor_name': String,
     channel_name': String = "main")
   =>
@@ -33,18 +33,20 @@ class ChannelReserve
     reactor_name = reactor_name'
     channel_name = channel_name'
 
-class ChannelRegister
+class val ChannelRegister
   """ Register, replace, or forget a channel with a ChannelReservation. """
   let reservation: ChannelReservation val
-  let channel: (Channel[(Any iso | Any val | Any tag)] val | None)
+  // let channel: (Channel[(Any iso | Any val | Any tag)] val | None)
+  let channel: (ChannelKind val | None)
   new val create(
     reservation': ChannelReservation val,
-    channel': (Channel[(Any iso | Any val | Any tag)] val | None))
+    // channel': (Channel[(Any iso | Any val | Any tag)] val | None))
+    channel': (ChannelKind val | None))
   =>
     reservation = reservation'
     channel = channel'
 
-class ChannelGet[E: Any #send]
+class val ChannelGet[E: Any #send]
   """"""
   let reactor_name: String
   let channel_name: String
@@ -58,7 +60,7 @@ class ChannelGet[E: Any #send]
     reactor_name = reactor_name'
     channel_name = channel_name'
 
-class ChannelAwait[E: Any #send]
+class val ChannelAwait[E: Any #send]
   """"""
   let reactor_name: String
   let channel_name: String
@@ -79,7 +81,7 @@ type ChannelsEvent is
   | ChannelAwait[(Any iso | Any val | Any tag)]
   )
 
-class ChannelReservation
+class val ChannelReservation
   """"""
   let reserved_key: (String, String)
   new val create(
@@ -90,7 +92,7 @@ class ChannelReservation
 
 // TODO: Channels service
 //- Give it the responsibility to lazily create services on demand. If any reactor awaits a channel that describes a reserved standard or custom? service, instantiate that reactor service and provide it. (Replaces ReactorSystemProxy, system() call with regular channel requests.) The Channels channel should be preemptively provided to all ReactorState, given its importance, perhaps via Promise from the ReactorSystem.
-actor Channels is (Service & Reactor[ChannelsEvent])
+actor Channels is (Service & Reactor[ChannelsEvent val])
   """"""
   let _reactor_state: ReactorState[ChannelsEvent]
   var _system: (ReactorSystem tag | None)
@@ -99,7 +101,8 @@ actor Channels is (Service & Reactor[ChannelsEvent])
   // reservation used to guarrentee the registered name pair.
   let _channel_map: MapIs[
     (String, String),
-    (Channel[(Any iso | Any val | Any tag)] val | ChannelReservation val)
+    // (Channel[(Any iso | Any val | Any tag)] val | ChannelReservation val)
+    (ChannelKind val | ChannelReservation val)
   ]
 
   // A map of (reactor-name, channel-name) pairs to the set of reply channels
@@ -119,11 +122,13 @@ actor Channels is (Service & Reactor[ChannelsEvent])
 
   be _init() =>
 
-    // Propogate the main channel to the system for spread to reactors.
-    _system._receive_channels_service(main().channel)
-
-    // Add this to the system's services
-    _system._receive_service(this)
+    match _system
+    | let system: ReactorSystem tag =>
+      // Propogate the main channel to the system for spread to reactors.
+      system._receive_channels_service(main().channel)
+      // Add this to the system's services
+      system._receive_service(this)
+    end
 
     // Register the main channel in the named channel map as well.
     _channel_map(("channels", "main")) = main().channel
@@ -131,8 +136,8 @@ actor Channels is (Service & Reactor[ChannelsEvent])
     // TODO: Add reservations for lazily init'd core services.
 
     // TODO: Channels event handling - delegate to funs
-    main().events.on_event({
-      (event: ChannelsEvent) =>
+    main().events.on_event({ref
+      (event: ChannelsEvent, hint: OptionalEventHint) =>
         match event
         | let reserve: ChannelReserve => None //reserve_channel(reserve)
         | let register: ChannelRegister => None //register_channel(register)
