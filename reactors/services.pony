@@ -117,17 +117,21 @@ actor Channels is (Service & Reactor[ChannelsEvent])
   fun ref reactor_state(): ReactorState[ChannelsEvent] => _reactor_state
 
   be _init() =>
-    // Register the default channel of this reactor, the channels service.
-    _channel_map(("channels", "main")) =
-      object val is Channel[ChannelsEvent]
-        let _channel_tag: ChannelTag = ChannelTag
-        fun channel_tag(): ChannelTag => _channel_tag
-        fun shl(ev: ChannelsEvent) =>
-          default_sink(ev)
-      end
-    
+
+    // Propogate the main channel to the system for spread to reactors.
+    system._receive_channels_service(main().channel)
+
+    // Register the main channel in the named channel map as well.
+    _channel_map(("channels", "main")) = main().channel
+    // object val is Channel[ChannelsEvent]
+    //   let _channel_tag: ChannelTag = ChannelTag
+    //   fun channel_tag(): ChannelTag => _channel_tag
+    //   fun shl(ev: ChannelsEvent) =>
+    //     default_sink(ev)
+    // end
+
     // TODO: Add reservations for lazily init'd core services.
-    
+
     // TODO: Channels event handling - delegate to funs
     main().events.on_event({
       (event: ChannelsEvent) =>
@@ -140,6 +144,7 @@ actor Channels is (Service & Reactor[ChannelsEvent])
     })
 
   be shutdown() =>
+    // Send shutdown to core services needed?
     _system = None
     _channel_map.clear()
     _await_map.clear()

@@ -9,15 +9,15 @@ primitive ReactorSystemTag
 /* Could also be made generic with ReactorSystemProxy type, for example to deal with custom services? */
 class ReactorState[T: Any #send]
   """ An object which manages internal state of a reactor. """
+  let reactor: Reactor[T]
   // Should also be able to supply the real system, to allow for creating reactors within actors.
   let system: ReactorSystem tag
 //  let system_proxy: ReactorSystemProxy
-  let reactor: Reactor[T]
+  var channels_service: Channel[ChannelsEvent] val
   let main_connector: Connector[T]
   let system_events: Events[SysEvent]
   // let connectors: MapIs[ChannelTag tag, Connector[Any]]
   let connectors: MapIs[Any tag, Connector[Any]]
-  var channels_service: Channel[ChannelsEvent] val
 
   new create(
     reactor': Reactor[T],
@@ -32,9 +32,9 @@ class ReactorState[T: Any #send]
     //- Setup the system proxy (required for channels interaction)
 //    system_proxy = ReactorSystemProxy(reactor, system)
 
-    // Assign a no-op dummy channel as the channels_service...
+    // Assign a no-op dummy channel as the channels_service..
     channels_service = BuildChannel.dummy[ChannelsEvent]()
-    // ...and promise to supplant it with the real thing:
+    // ..and promise to supplant it with the real thing:
     let promise: Promise[Channel[ChannelsEvent]] = system.channels()
     promise.next[None]({
       (channels_channel: Channel[ChannelsEvent]) =>

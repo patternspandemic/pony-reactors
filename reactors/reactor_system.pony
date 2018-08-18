@@ -30,7 +30,7 @@ actor ReactorSystem //is Services
   */
 
   // Standard System Services
-  // let _channels: Channels
+  let _channels_service: (Channel[ChannelsEvent] val | None) = None
   // let clock: Clock
   // let debugger: Debugger
   // let io: Io
@@ -69,7 +69,19 @@ actor ReactorSystem //is Services
     services = consume services'
 */
 
-  fun channels(): Channels => _channels
+  fun tag channels(): Promise[Channel[ChannelsEvent] val] =>
+     let promise = Promise[Channel[ChannelsEvent] val]
+     _try_fulfill_channels(promise)
+     promise
+
+  be _try_fulfill_channels(promise: Promise[Channel[ChannelsEvent] val]) =>
+    match _channels_service
+    | let c: Channel[ChannelsEvent] val => promise(c)
+    | None => promise.reject()
+    end
+
+  be _receive_channels_service(channels_service': Channel[ChannelsEvent] val) =>
+    _channels_service = channels_service'
 
   // fun clock(): Clock
   // fun debugger(): Debugger
