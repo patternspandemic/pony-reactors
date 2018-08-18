@@ -42,7 +42,7 @@ class ReactorState[T: Any #send]
 
 //?    //- Setup system events connector
 
-    // Configure the main connector.
+    // Configure the main connector..
     main_connector = Connector[T](
       where
         channel' = object val is Channel[T]
@@ -52,8 +52,11 @@ class ReactorState[T: Any #send]
             reactor.default_sink(ev)
         end,
         events' = BuildEvents.emitter[T](),
+        reactor_state' = this,
         reservation' = reservation
     )
+    // ..and add it to the reactor's collection
+    connectors(main_connector.channel.channel_tag()) = main_connector
 
     // If a ChannelReservation was provided, note to register
     // the main channel when the channels service is fulfilled.

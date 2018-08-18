@@ -7,11 +7,10 @@ actor Welcomer is Reactor[String]
 
   new create(
     system: ReactorSystem,
-    name: String,
-    channel_name: String = "main",
-    out: Env)?
+    reservation: (ChannelReservation | None) = None)
+    out: Env)
   =>
-    _reactor_state = ReactorState(this, system, name, channel_name) //?
+    _reactor_state = ReactorState(this, system, reservation)
     _out = out
 
   fun ref reactor_state(): ReactorState => _reactor_state
@@ -20,9 +19,40 @@ actor Welcomer is Reactor[String]
     main().events.on_event({
       (name: String) =>
         _out.print("Welcome " + name + "!")
+        main().seal()
     })
 
-/* Obtain reserved name prior reactor creation via promise. */
+
+/* Obtain reserved name prior reactor creation via making Main a reactor. */
+actor Main is Reactor[None]
+  let env: Env
+  let system: ReactorSystem
+  let _reactor_state: ReactorState
+
+  new create(env': Env) =>
+    env = env'
+    system = ReactorSystem
+    _reactor_state = ReactorState(this, system)
+
+  be _init() =>
+    let conn = open()
+    channels() << ChannelReserve(conn.channel, "welcomer")
+    conn.events.on_event({
+      (res: (ChannelReservation | None)) =>
+        match res
+        | let cr: ChannelReservation =>
+          let welcomer = Welcomer(system, cr, env.out)
+          welcomer << "Ponylang"
+        | None =>
+          env.out.print("Denied 'welcomer' reservation")
+        end
+        conn.seal()
+    })
+
+
+// Other OLD ideas
+
+/* Obtain reserved name prior reactor creation via promise.
 actor Main
   new create(env: Env) =>
     let system ReactorSystem
@@ -36,8 +66,9 @@ actor Main
         },
         rejected = {() => env.out.print("Failed to reserve channel name.")}
     )
+*/
 
-/* Force reactor creation to be partial */
+/* Force reactor creation to be partial
 actor Main
   new create(env: Env) =>
     let system ReactorSystem
@@ -57,29 +88,4 @@ actor Main
             })
         end
     end
-
-
-/* Obtain reserved name prior reactor creation via making Main a reactor. */
-actor Main is Reactor[None]
-  let env: Env
-  let system: ReactorSystem
-  let _reactor_state: ReactorState
-
-  new create(env': Env) =>
-    env = env'
-    system = ReactorSystem
-    _reactor_state = ReactorState(this, system)
-  
-  be _init() =>
-
-    system().channels.reserve("welcomer") // should use IVar?
-      .on_event({
-        (rr: ReserveResponse) =>
-          match rr()
-          | let cr: ChannelReserve =>
-            let welcomer = Welcomer(system, rc, env.out)
-            welcomer << "Ponylang"
-          else
-            //?
-          end
-      })
+*/
