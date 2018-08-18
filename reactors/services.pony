@@ -5,7 +5,7 @@ trait Protocol
   fun system(): ReactorSystem tag
 
 trait tag Service
-  """ A Protocol that can be shut down. """
+  """ A Protocol reactor that can be shut down to cleanup its resources. """
   be shutdown()
 
 trait val ServiceBuilder
@@ -121,14 +121,11 @@ actor Channels is (Service & Reactor[ChannelsEvent])
     // Propogate the main channel to the system for spread to reactors.
     system._receive_channels_service(main().channel)
 
+    // Add this to the system's services
+    system._receive_service(this)
+
     // Register the main channel in the named channel map as well.
     _channel_map(("channels", "main")) = main().channel
-    // object val is Channel[ChannelsEvent]
-    //   let _channel_tag: ChannelTag = ChannelTag
-    //   fun channel_tag(): ChannelTag => _channel_tag
-    //   fun shl(ev: ChannelsEvent) =>
-    //     default_sink(ev)
-    // end
 
     // TODO: Add reservations for lazily init'd core services.
 

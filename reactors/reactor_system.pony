@@ -1,33 +1,15 @@
 use "collections"
 
-trait SysEvent
-
-/*
-What if all these service accessors returned channels that took request event types, and returned their results to a one off reply channel of the reactor making the request?!
-*/
-trait Services
-  fun channels(): Channels
-  // fun clock(): Clock
-  // fun debugger(): Debugger
-  // fun io(): Io
-  // fun log(): Log
-  // fun names(): Names
-  // fun net(): Net
-  // fun remote(): Remote
-
+// type SysEvent is ...
 
 // TODO: ReactorSystem - Support custom services.
 //    * Custom service builders could be provided at ReactorSystem creation time. Supporting a custom service after this would require an actor behind the scenes and Promises or the like?
-actor ReactorSystem //is Services
+actor ReactorSystem
   """
   A system used to create, track, and identify reactors.
   """
-  // var services: MapIs[ServiceBuilder, Service] val =
-  //   recover val services.create(0) end
-  /*
-    bundle // ?
-    config // ? bundle.config
-  */
+  let _reactors: SetIs[Reactor[(Any iso | Any val | Any tag)]]
+  let _services: SetIs[Service tag]
 
   // Standard System Services
   let _channels_service: (Channel[ChannelsEvent] val | None) = None
@@ -44,7 +26,8 @@ actor ReactorSystem //is Services
     // custom_services: Array[ServiceBuilder] val =
     //   recover val [as ServiceBuilder:] end)
   =>
-    // _channels = ChannelsService(this)
+    _reactors = _reactors.create()
+    _services = _services.create()
 /*
     // A collection of reactor system services
     let services': MapIs[ServiceBuilder, Service] trn =
@@ -83,6 +66,7 @@ actor ReactorSystem //is Services
   be _receive_channels_service(channels_service': Channel[ChannelsEvent] val) =>
     _channels_service = channels_service'
 
+/* OLD - will be moved to Channels service. */
   // fun clock(): Clock
   // fun debugger(): Debugger
   // fun io(): Io
@@ -91,21 +75,22 @@ actor ReactorSystem //is Services
   // fun net(): Net
   // fun remote(): Remote
 
-  // fun spawn()
+  be _receive_service(service: Service tag) =>
+    _services.set(service)
 
-  fun shutdown() =>
+  be _receive_reactor(reactor: Reactor[(Any iso | Any val | Any tag)]) =>
+    _reactors.set(reactor)
+
+  fun tag shutdown() =>
     """ Shut down this reactor system and all its services. """
     _shut_down_services()
 
-  fun _shut_down_services() =>
-    let services = [
-      channels()
-    ]
-    for service in services.values() do
+  be _shut_down_services() => None
+    for service in _services.values() do
       service.shutdown()
     end
 
-/*
+/* OLD
 class ReactorSystemProxy[T: Any #send] //is Services
   let reactor: Reactor[T]
   let system: ReactorSystem tag
