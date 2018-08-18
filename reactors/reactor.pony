@@ -1,3 +1,4 @@
+use "collections"
 use "promises"
 
 primitive ReactorSystemTag
@@ -27,6 +28,7 @@ class ReactorState[T: Any #send]
   =>
     reactor = reactor'
     system = system'
+    connectors = connectors.create()
 
     //- Setup the system proxy (required for channels interaction)
 //?    system_proxy = ReactorSystemProxy(reactor, system)
@@ -73,7 +75,7 @@ class ReactorState[T: Any #send]
 
 trait Reactor[E: Any #send]
   """"""
-    fun ref reactor_state(): ReactorState
+    fun ref reactor_state(): ReactorState[E]
 
     fun ref main(): Connector[E] =>
       reactor_state().main_connector
@@ -130,8 +132,8 @@ trait Reactor[E: Any #send]
     be _supplant_channels_service(
       channels_channel: Channel[ChannelsEvent] val)
     =>
-      _reactor_state.channels_service = channels_channel
-      if _reactor_state.register_main_channel then
+      reactor_state().channels_service = channels_channel
+      if reactor_state().register_main_channel then
         channels() << ChannelRegister(
           main().reservation,
           main().channel

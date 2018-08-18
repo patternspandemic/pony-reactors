@@ -1,8 +1,8 @@
 
 class Connector[T]
   """"""
-  let _reactor_state: ReactorState
-  let _is_sealed: Bool = false
+  let _reactor_state: ReactorState[(Any iso | Any val | Any tag)]
+  var _is_sealed: Bool = false
   let channel: Channel[T] val
   var reservation: (ChannelReservation val | None)
   let events: Events[T] ref
@@ -11,7 +11,7 @@ class Connector[T]
   new create(
     channel': Channel[T] val,
     events': Events[T],
-    reactor_state': ReactorState,
+    reactor_state': ReactorState[(Any iso | Any val | Any tag)],
     reservation': (ChannelReservation val | None) = None)
   =>
     channel = channel'

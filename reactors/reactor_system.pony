@@ -1,4 +1,5 @@
 use "collections"
+use "promises"
 
 // type SysEvent is ...
 
@@ -12,7 +13,7 @@ actor ReactorSystem
   let _services: SetIs[Service tag]
 
   // Standard System Services
-  let _channels_service: (Channel[ChannelsEvent] val | None) = None
+  var _channels_service: (Channel[ChannelsEvent] val | None) = None
   // let clock: Clock
   // let debugger: Debugger
   // let io: Io
@@ -78,7 +79,7 @@ actor ReactorSystem
   be _receive_service(service: Service tag) =>
     _services.set(service)
 
-  be _receive_reactor(reactor: Reactor[(Any iso | Any val | Any tag)]) =>
+  be _receive_reactor(reactor: Reactor[(Any iso | Any val | Any tag)] tag) =>
     _reactors.set(reactor)
 
   fun tag shutdown() =>

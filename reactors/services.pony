@@ -1,3 +1,4 @@
+use "collections"
 
 // TODO: Protocol trait not needed?
 trait Protocol
@@ -38,7 +39,7 @@ class ChannelRegister
   let channel: (Channel[(Any iso | Any val | Any tag)] val | None)
   new val create(
     reservation': ChannelReservation val,
-    channel: (Channel[(Any iso | Any val | Any tag)] val) | None)
+    channel': (Channel[(Any iso | Any val | Any tag)] val | None))
   =>
     reservation = reservation'
     channel = channel'
@@ -74,8 +75,8 @@ class ChannelAwait[E: Any #send]
 type ChannelsEvent is
   ( ChannelReserve
   | ChannelRegister
-  | ChannelGet
-  | ChannelAwait
+  | ChannelGet[(Any iso | Any val | Any tag)]
+  | ChannelAwait[(Any iso | Any val | Any tag)]
   )
 
 class ChannelReservation
@@ -92,7 +93,7 @@ class ChannelReservation
 actor Channels is (Service & Reactor[ChannelsEvent])
   """"""
   let _reactor_state: ReactorState[ChannelsEvent]
-  let _system: (ReactorSystem tag | None)
+  var _system: (ReactorSystem tag | None)
 
   // A map of (reactor-name, channel-name) pairs to the registered channel or
   // reservation used to guarrentee the registered name pair.
@@ -109,7 +110,7 @@ actor Channels is (Service & Reactor[ChannelsEvent])
   ]
 
   new create(system': ReactorSystem tag) =>
-    _reactor_state = ReactorState[ChannelsEvent](this, system)
+    _reactor_state = ReactorState[ChannelsEvent](this, system')
     _system = system'
     _channel_map = _channel_map.create()
     _await_map = _await_map.create()
@@ -119,10 +120,10 @@ actor Channels is (Service & Reactor[ChannelsEvent])
   be _init() =>
 
     // Propogate the main channel to the system for spread to reactors.
-    system._receive_channels_service(main().channel)
+    _system._receive_channels_service(main().channel)
 
     // Add this to the system's services
-    system._receive_service(this)
+    _system._receive_service(this)
 
     // Register the main channel in the named channel map as well.
     _channel_map(("channels", "main")) = main().channel
@@ -135,8 +136,8 @@ actor Channels is (Service & Reactor[ChannelsEvent])
         match event
         | let reserve: ChannelReserve => None //reserve_channel(reserve)
         | let register: ChannelRegister => None //register_channel(register)
-        | let get: ChannelGet => None //get_channel(get)
-        | let await: ChannelAwait => None //await_channel(await)
+        | let get: ChannelGet[(Any iso | Any val | Any tag)] => None //get_channel(get)
+        | let await: ChannelAwait[(Any iso | Any val | Any tag)] => None //await_channel(await)
         end
     })
 
