@@ -18,11 +18,10 @@ trait Services
 
 // TODO: ReactorSystem - Support custom services.
 //    * Custom service builders could be provided at ReactorSystem creation time. Supporting a custom service after this would require an actor behind the scenes and Promises or the like?
-actor ReactorSystem is Services
+actor ReactorSystem //is Services
   """
   A system used to create, track, and identify reactors.
   """
-  let name: String
   // var services: MapIs[ServiceBuilder, Service] val =
   //   recover val services.create(0) end
   /*
@@ -31,7 +30,7 @@ actor ReactorSystem is Services
   */
 
   // Standard System Services
-  let _channels: Channels
+  // let _channels: Channels
   // let clock: Clock
   // let debugger: Debugger
   // let io: Io
@@ -41,12 +40,11 @@ actor ReactorSystem is Services
   // let remote: Remote
 
   // new val create(name': String) =>
-  new create(name': String)
+  new create()
     // custom_services: Array[ServiceBuilder] val =
     //   recover val [as ServiceBuilder:] end)
   =>
-    name = name'
-    _channels = ChannelsService(this)
+    // _channels = ChannelsService(this)
 /*
     // A collection of reactor system services
     let services': MapIs[ServiceBuilder, Service] trn =
@@ -94,3 +92,15 @@ actor ReactorSystem is Services
     for service in services.values() do
       service.shutdown()
     end
+
+/*
+class ReactorSystemProxy[T: Any #send] //is Services
+  let reactor: Reactor[T]
+  let system: ReactorSystem tag
+
+  let _channels: Channel[ChannelsEvent]
+
+  new create(reactor': Reactor[T], system': ReactorSystem tag) =>
+    reactor = reactor'
+    system = system'
+*/

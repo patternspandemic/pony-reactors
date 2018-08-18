@@ -6,15 +6,46 @@ primitive ReactorSystemTag
   - Track 'non-daemon' connectors, as to be able to 'terminate' the reactor when all such connectors are sealed. Basically make it so no other actors
   can send messages to the reactor. Channels may be spread far, so it may require some kind of system event telling reactors that a channel is sealed, and therefor to drop val refs to them? (Part of the default ReactorState). But how does a reactor even access/drop channel references captured in event callbacks for instance? This may be a problem.
 */
+/* Could also be made generic with ReactorSystemProxy type, for example to deal with custom services? */
 class ReactorState[T: Any #send]
   """ An object which manages internal state of a reactor. """
   // Should also be able to supply the real system, to allow for creating reactors within actors.
   let system: ReactorSystem tag
-  let system_proxy: ReactorSystemProxy
+//  let system_proxy: ReactorSystemProxy
+  let reactor: Reactor[T]
   let main_connector: Connector[T]
   let system_events: Events[SysEvent]
   // let connectors: MapIs[ChannelTag tag, Connector[Any]]
   let connectors: MapIs[Any tag, Connector[Any]]
+  var channels_service: Channel[ChannelsEvent] val
+
+  new create(
+    reactor': Reactor[T],
+    system': ReactorSystem tag,
+    reservation': (ChannelReservation | None) = None)
+  =>
+    reactor = reactor'
+    system = system'
+
+    // TODO: ReactorState.create (order is important)
+
+    //- Setup the system proxy (required for channels interaction)
+//    system_proxy = ReactorSystemProxy(reactor, system)
+
+    // Assign a no-op dummy channel as the channels_service...
+    channels_service = BuildChannel.dummy[ChannelsEvent]()
+    // ...and promise to supplant it with the real thing:
+    let promise: Promise[Channel[ChannelsEvent]] = system.channels()
+    promise.next[None]({
+      (channels_channel: Channel[ChannelsEvent]) =>
+        reactor._supplant_channels_service(channels_channel)
+    })
+
+    //- Setup system events connector
+    //- Setup main connector, optionally registering it with a reserved name
+    //- Setup any default event handling
+    //- Ensure the reactor's _init get called
+    //- Pass system channel/reactor to the ReactorSystem (will send start event)
 
 
 /* Reactors will need functionality to open channels themselves. They'll then have to push any such channels they want public to the channels service. */
@@ -36,11 +67,15 @@ trait Reactor[E: Any #send]
       reactor_state().system_events
 
     // TODO: Reactor.system - Use of the system must be partially applied with this reactor. The value of this reactor should then be propogated to each service, for instance to create the proper channels for service values to make their way back to the reactor. Or maybe this value is a wrapper around a ReactorSystem val, a ReactorSystemProxy?
+    /*
     fun ref system(): ReactorSystemProxy =>
       reactor_state().system_proxy
+    */
+    fun ref channels(): Channel[ChannelsEvent] val =>
+      reactor_state().channels_service
 
     fun tag shl(event: E) =>
-      """ Shortcut to use a reactor ref itself as its default channel. """
+      """ Shortcut to use a reactor reference itself as its default channel. """
       default_sink(event)
 
     fun tag default_sink(event: E) =>
@@ -53,9 +88,9 @@ trait Reactor[E: Any #send]
       _muxed_sink[E](this, consume event)
     
     // TODO: Reactor._system_event_sink - Replace ReactorSystemTag with actual system via the proxy
-    fun tag _system_event_sink(event: E) =>
+    fun tag _system_event_sink(event: SysEvent) =>
       """ The reactor's system events channel sink. """
-      _muxed_sink[E](ReactorSystemTag, consume event)
+      _muxed_sink[SysEvent](ReactorSystemTag, consume event)
 
     // Extra channels, one time channels, in addition to above..
     // be _muxed_sink[T: (Any #send | E)](channel_tag: ChannelTag tag, event: T) =>
@@ -73,6 +108,11 @@ trait Reactor[E: Any #send]
         None
       end
     
+    be _supplant_channels_service(
+      channels_channel: Channel[ChannelsEvent] val)
+    =>
+      _reactor_state.channels_service = channels_channel
+
     // TODO: Reactor.init - Ensure init'd only once
     be _init()
       """"""

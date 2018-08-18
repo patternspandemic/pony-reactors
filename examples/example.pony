@@ -72,18 +72,14 @@ actor Main is Reactor[None]
   
   be _init() =>
 
-    system().channels.reserve("welcomer") // should  use IVar
+    system().channels.reserve("welcomer") // should use IVar?
       .on_event({
-        (rc: ReservedChannel) =>
-          let welcomer = Welcomer(system, rc, env.out)
-          welcomer << "Ponylang"
+        (rr: ReserveResponse) =>
+          match rr()
+          | let cr: ChannelReserve =>
+            let welcomer = Welcomer(system, rc, env.out)
+            welcomer << "Ponylang"
+          else
+            //?
+          end
       })
-/*
-    let chnls = system().channels.connection()
-    chnls.channel << Reserve("welcomer")
-    chnls.events.on_event({
-      (name_reservation) =>
-        let welcomer = Welcomer(system, name_reservation, env.out)
-        welcomer << "Ponylang"
-    })
-*/
