@@ -35,7 +35,7 @@ actor Main is Reactor[None]
     _reactor_state = ReactorState(this, system)
 
   be _init() =>
-    let conn = open()
+    let conn = open[(ChannelReservation | None)]()
     channels() << ChannelReserve(conn.channel, "welcomer")
     conn.events.on_event({
       (res: (ChannelReservation | None), hint: OptionalEventHint) =>

@@ -46,6 +46,7 @@ class ReactorState[T: Any #send]
 //?    //- Setup system events connector
 
     // Configure the main connector..
+    
     main_connector = Connector[T](
       where
         channel' = object val is Channel[T]

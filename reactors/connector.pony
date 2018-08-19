@@ -1,6 +1,26 @@
 
 interface ConnectorKind
 
+/*
+May need to split this out to
+  - IsolatedConnector[C: Any iso, E: Any ref]
+  - Connector[T: (Any val | Any tag)] // #share
+
+Then have counterpart Reactor types
+  - IsolatedReactor[C: Any iso, E: Any ref]
+  - Reactor[T: (Any val | Any tag)] // #share
+  - IsolatedReactorState[C: Any iso, E: Any ref]
+  - ReactorState[T: (Any val | Any tag)] // #share
+
+Then have counterpart calls to open
+  - open_isolated[]
+  - open[]
+
+ETC...
+
+So plan: Move the current generic typing from #send to #share to cover the `val` and `tag` case. Then add Isolated* types to account for reactors, channels operating on events that are `iso` in nature. Additionally, add a `iso` to `ref` translation fun that can be overridden for when Isolated* C and E types are not the same underlying (may not be worth it)?
+*/
+
 class Connector[T: Any #send] is ConnectorKind
   """"""
   let _reactor_state: ReactorState[(Any iso | Any val | Any tag)]
