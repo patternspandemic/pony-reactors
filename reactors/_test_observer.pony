@@ -4,6 +4,8 @@ primitive _ObserverTestHint is EventHint
 primitive _ObserverTestEventError is EventError
   fun apply(): String => "except"
 
+// TODO: _test_observer - Test with all #alias refcap types
+
 class iso _TestObserver is UnitTest
   fun name():String => "observer"
 

@@ -1,7 +1,7 @@
 use "collections"
 use "promises"
 
-primitive ReactorSystemTag
+// primitive ReactorSystemTag
 
 
 /*
@@ -9,14 +9,16 @@ primitive ReactorSystemTag
   can send messages to the reactor. Channels may be spread far, so it may require some kind of system event telling reactors that a channel is sealed, and therefor to drop val refs to them? (Part of the default ReactorState). But how does a reactor even access/drop channel references captured in event callbacks for instance? This may be a problem.
 */
 /* Could also be made generic with ReactorSystemProxy type, for example to deal with custom services? */
-class ReactorState[T: Any #send]
+class ReactorState[T: Any #share]
+// class ReactorState[T: Any val]
   """ An object which manages internal state of a reactor. """
   let reactor: Reactor[T]
   let system: ReactorSystem tag
 //  let system_proxy: ReactorSystemProxy
   var channels_service: Channel[ChannelsEvent] val
-  let main_connector: Connector[T]
+  let main_connector: Connector[T, T]
   let register_main_channel: Bool
+  let reservation: (ChannelReservation | None)
 //  let system_events: Events[SysEvent]
   // // let connectors: MapIs[ChannelTag tag, Connector[Any]]
   // let connectors: MapIs[Any tag, Connector[Any]]
@@ -25,10 +27,11 @@ class ReactorState[T: Any #send]
   new create(
     reactor': Reactor[T],
     system': ReactorSystem tag,
-    reservation: (ChannelReservation | None) = None)
+    reservation'': (ChannelReservation | None) = None)
   =>
     reactor = reactor'
     system = system'
+    reservation = reservation''
     connectors = connectors.create()
 
     //- Setup the system proxy (required for channels interaction)
@@ -46,8 +49,7 @@ class ReactorState[T: Any #send]
 //?    //- Setup system events connector
 
     // Configure the main connector..
-    
-    main_connector = Connector[T](
+    main_connector = Connector[T, T](
       where
         channel' = object val is Channel[T]
           let _channel_tag: ChannelTag = ChannelTag
@@ -56,11 +58,13 @@ class ReactorState[T: Any #send]
             reactor.default_sink(consume ev)
         end,
         events' = BuildEvents.emitter[T](),
-        reactor_state' = this,
-        reservation' = reservation
+        reservation' = reservation''
+        // reactor_state' needs to be set after constructing this, so the
+        // reference to `this` ReactorState is `ref` rather than `tag`
     )
     // ..and add it to the reactor's collection
     connectors(main_connector.channel.channel_tag()) = main_connector
+    reactor._set_reactor_state_on_main_connector()
 
     // If a ChannelReservation was provided, note to register
     // the main channel when the channels service is fulfilled.
@@ -78,11 +82,12 @@ class ReactorState[T: Any #send]
 interface tag ReactorKind
 
 
-trait tag Reactor[E: Any #send] is ReactorKind
+trait tag Reactor[E: Any #share] is ReactorKind
+// trait tag Reactor[E: Any val] is ReactorKind
   """"""
     fun ref reactor_state(): ReactorState[E]
 
-    fun ref main(): Connector[E] =>
+    fun ref main(): Connector[E, E] =>
       reactor_state().main_connector
 
 //    fun ref sys_events(): Events[SysEvent] =>
@@ -119,8 +124,8 @@ trait tag Reactor[E: Any #send] is ReactorKind
 //      _muxed_sink[SysEvent](ReactorSystemTag, consume event)
 
     // Extra channels, one time channels, in addition to above..
-    // be _muxed_sink[T: (Any #send | E)](channel_tag: ChannelTag tag, event: T) =>
-    be _muxed_sink[T: (Any #send | E)](channel_tag: Any tag, event: T) =>
+    // be _muxed_sink[T: (Any #share | E)](channel_tag: ChannelTag tag, event: T) =>
+    be _muxed_sink[T: (Any #share | E)](channel_tag: Any tag, event: T) =>
       """
       The reactor's multiplexed sink for events sent to any of its channels.
       This behavior acts as a router for all events sent to the reactor,
@@ -144,6 +149,10 @@ trait tag Reactor[E: Any #send] is ReactorKind
           channels() << ChannelRegister(cr, main().channel)
         end
       end
+
+    be _set_reactor_state_on_main_connector() =>
+      """ Complete the reactor state's main_connector configuration. """
+      main()._set_reactor_state(reactor_state())
 
     // TODO: Reactor.init - Ensure init'd only once
     be _init()

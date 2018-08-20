@@ -8,7 +8,7 @@ interface val EventError
 type OptionalEventHint is (EventHint | None)
 
 // TODO: Events - Fill out docstring
-trait Events[T: Any #read]
+trait Events[T: Any #alias]
   """
   A basic event stream.
   """
@@ -75,7 +75,7 @@ trait Events[T: Any #read]
     let o: Observer[T] = BuildObserver[T].of_except(except_handler)
     on_reaction(o)
 
-  fun ref after[S: Any #read](that: Events[S]): Events[T] =>
+  fun ref after[S: Any #alias](that: Events[S]): Events[T] =>
     """
     Creates a new event stream that produces events from this event stream only
     after the event stream `that` produces an event. If `that` unreacts before
@@ -99,7 +99,7 @@ trait Events[T: Any #read]
 
 // TODO: Push
 // - Possibility of having references to observers that are no longer reachable?
-trait Push[T: Any #read] is Events[T]
+trait Push[T: Any #alias] is Events[T]
   """ Default Implementation of an event stream. """
   // Push state accessors ...
   fun ref get_observers(): (SetIs[Observer[T]] | None)
@@ -184,7 +184,7 @@ trait Push[T: Any #read] is Events[T]
     end
 
 
-class _After[T: Any #read, S: Any #read] is Events[T]
+class _After[T: Any #alias, S: Any #alias] is Events[T]
   """
   An event stream that produces events from `self` only after a react event is
   produced from `that`. Unreacts when `self` unreacts, or when `that` unreacts
@@ -208,7 +208,7 @@ class _After[T: Any #read, S: Any #read] is Events[T]
     BuildSubscription.composite([sub; sub_that])
 
 
-class Emitter[T: Any #read] is (Push[T] & Events[T] & Observer[T])
+class Emitter[T: Any #alias] is (Push[T] & Events[T] & Observer[T])
   """
   An event source that emits events when `react`, `except`, or `unreact` is called. Emitters are simultaneously an event stream and observer.
   """
@@ -268,7 +268,7 @@ class Mutable[M: Any ref] is (Push[M] & Events[M])
   fun ref _set_events_unreacted(value: Bool) => _events_unreacted = value
 
 
-class Never[T: Any #read] is Events[T]
+class Never[T: Any #alias] is Events[T]
   """
   An event source that never emits events. Subscribers immediately `unreact`.
   """
@@ -281,7 +281,7 @@ class Never[T: Any #read] is Events[T]
 primitive BuildEvents
   """"""
 
-  fun emitter[T: Any #read](): Emitter[T] =>
+  fun emitter[T: Any #alias](): Emitter[T] =>
     """
     An event source that emits events when `react`, `except`, or `unreact` is called. Emitters are simultaneously an event stream and observer.
     """
@@ -290,7 +290,7 @@ primitive BuildEvents
   fun mutable[M: Any ref](content: M): Mutable[M] =>
     Mutable[M](content)
 
-  fun never[T: Any #read](): Never[T] =>
+  fun never[T: Any #alias](): Never[T] =>
     """
     An event source that never emits events. Subscribers immediately `unreact`.
     """

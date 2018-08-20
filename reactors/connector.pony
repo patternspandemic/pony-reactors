@@ -18,12 +18,22 @@ Then have counterpart calls to open
 
 ETC...
 
-So plan: Move the current generic typing from #send to #share to cover the `val` and `tag` case. Then add Isolate* types to account for reactors, channels, etc operating on events that are `iso` in nature. Additionally, add a `iso` to `ref` translation fun that can be overridden for when Isolated* C and E types are not the same underlying (may not be worth it)?
+So plan:
+✓ Move events and observer stuff from #read to #alias (the latter including tag)
+✓ Move the current generic typing from #send to #share to cover the `val` and `tag` case.
+- Add Isolate* types to account for reactors, channels, etc operating on events that are `iso` in nature.
+- Maybe add a `iso` to `ref` translation fun that can be overridden for when Isolated* C and E types are not the same underlying (may not be worth it)?
 */
 
-class Connector[T: Any #send] is ConnectorKind
-  """"""
-  let _reactor_state: ReactorState[(Any iso | Any val | Any tag)]
+// class Connector[T: Any #share] is ConnectorKind
+// class Connector[T: Any val, S: Any val] is ConnectorKind
+class Connector[T: Any #share, S: Any #share] is ConnectorKind
+  """
+  T: Type of channel, events
+  S: Type of reactor state
+  """
+  // var _reactor_state: (ReactorState[(Any val | Any tag)] | None)
+  var _reactor_state: (ReactorState[S] | None)
   var _is_sealed: Bool = false
   let channel: Channel[T] val
   var reservation: (ChannelReservation | None)
@@ -33,7 +43,8 @@ class Connector[T: Any #send] is ConnectorKind
   new create(
     channel': Channel[T] val,
     events': Emitter[T], //Events[T]
-    reactor_state': ReactorState[(Any iso | Any val | Any tag)],
+    // reactor_state': (ReactorState[(Any val | Any tag)] | None) = None,
+    reactor_state': (ReactorState[S] | None) = None,
     reservation': (ChannelReservation | None) = None)
   =>
     channel = channel'
@@ -41,18 +52,25 @@ class Connector[T: Any #send] is ConnectorKind
     _reactor_state = reactor_state'
     reservation = reservation'
 
+  // fun ref _set_reactor_state(rs: ReactorState[(Any val | Any tag)]) =>
+  fun ref _set_reactor_state(rs: ReactorState[S]) =>
+    _reactor_state = rs
+
   fun ref seal() =>
     if not _is_sealed then
       // Mark connector as sealed, and unreact its event stream.
       _is_sealed = true
       events.unreact()
 
-      // Remove the connector from the owning reactor's collection.
-      try _reactor_state.connectors.remove(channel.channel_tag())? end
-
-      // If channel was registerd ask channels service to forget it.
-      match reservation
-      | let cr: ChannelReservation =>
-        _reactor_state.channels_service << ChannelRegister(cr, None)
+      match _reactor_state
+      // | let rs: ReactorState[(Any val | Any tag)] =>
+      | let rs: ReactorState[S] =>
+        // Remove the connector from the owning reactor's collection.
+        try rs.connectors.remove(channel.channel_tag())? end
+        // If channel was registerd ask channels service to forget it.
+        match reservation
+        | let cr: ChannelReservation =>
+          rs.channels_service << ChannelRegister(cr, None)
+        end
       end
     end

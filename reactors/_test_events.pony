@@ -7,11 +7,12 @@ primitive _SomeTestEventError is EventError
 primitive _OtherTestEventError is EventError
   fun apply(): String => "except"
 
+// TODO: _test_events - Test with all #alias refcap types
 // TODO: _TestEventsPush? Its functionality tested through other event tests.
 // TODO: _TestEventsEmitter? Its functionality tested through other event tests.
 // TODO: _TestEventsMutable? Its functionality tested through mutate eventtests.
 
-class _TestEmitter[T: Any #read] is (Push[T] & Events[T] & Observer[T])
+class _TestEmitter[T: Any #alias] is (Push[T] & Events[T] & Observer[T])
   let _emitter: Emitter[T] = BuildEvents.emitter[T]()
   var unsubscription_count: U32 = 0
 

@@ -2,7 +2,7 @@ use "../reactors"
 
 
 actor Welcomer is Reactor[String]
-  let _reactor_state: ReactorState
+  let _reactor_state: ReactorState[String]
   let _out: OutStream
 
   new create(

@@ -1,5 +1,5 @@
 
-trait Observer[T: Any #read]
+trait Observer[T: Any #alias]
   """
   An observer of values of type T produced by an event stream Events[T], or a
   signal indicating there will be no more events.
@@ -25,7 +25,7 @@ trait Observer[T: Any #read]
     None
 
 
-class _AfterObserver[T: Any #read] is Observer[T]
+class _AfterObserver[T: Any #alias] is Observer[T]
   """ Helper observer for `_After` event streams. """
   let target: Observer[T]
   var started: Bool = false
@@ -48,7 +48,7 @@ class _AfterObserver[T: Any #read] is Observer[T]
     end
 
 
-class _AfterThatObserver[T: Any #read, S: Any #read] is Observer[T]
+class _AfterThatObserver[T: Any #alias, S: Any #alias] is Observer[T]
   """ Helper observer for `_After` event streams. """
   let after_observer: _AfterObserver[S]
   var subscription: Subscription = BuildSubscription.empty()
@@ -73,7 +73,7 @@ class _AfterThatObserver[T: Any #read, S: Any #read] is Observer[T]
     end
 
 
-primitive BuildObserver[T: Any #read]
+primitive BuildObserver[T: Any #alias]
   """ Observer Builder  """
   
   fun apply(
@@ -98,7 +98,7 @@ primitive BuildObserver[T: Any #read]
   =>
     _AfterObserver[T](target')
 
-  fun _after_that[S: Any #read](
+  fun _after_that[S: Any #alias](
     after_observer': _AfterObserver[S])
     : _AfterThatObserver[T, S]
   =>

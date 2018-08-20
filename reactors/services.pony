@@ -46,7 +46,9 @@ class val ChannelRegister
     reservation = reservation'
     channel = channel'
 
-class val ChannelGet[E: Any #send]
+// Maybe can use Channel[ChannelKind] in place of Channel[E] to make work with Isolate version?
+class val ChannelGet[E: Any #share]
+// class val ChannelGet[E: Any val]
   """"""
   let reactor_name: String
   let channel_name: String
@@ -60,7 +62,9 @@ class val ChannelGet[E: Any #send]
     reactor_name = reactor_name'
     channel_name = channel_name'
 
-class val ChannelAwait[E: Any #send]
+// Maybe can use Channel[ChannelKind] in place of Channel[E] to make work with Isolate version?
+class val ChannelAwait[E: Any #share]
+// class val ChannelAwait[E: Any val]
   """"""
   let reactor_name: String
   let channel_name: String
@@ -77,8 +81,10 @@ class val ChannelAwait[E: Any #send]
 type ChannelsEvent is
   ( ChannelReserve
   | ChannelRegister
-  | ChannelGet[(Any iso | Any val | Any tag)]
-  | ChannelAwait[(Any iso | Any val | Any tag)]
+  | ChannelGet[(Any val | Any tag)] // FIXME: ? Replace w/subtype
+  | ChannelAwait[(Any val | Any tag)] // FIXME: ? Replace w/subtype
+  // | ChannelGet[Any val]
+  // | ChannelAwait[Any val]
   )
 
 class val ChannelReservation
@@ -105,11 +111,13 @@ actor Channels is (Service & Reactor[ChannelsEvent val])
     (ChannelKind val | ChannelReservation val)
   ]
 
+  // FIXME: Probs gonna need to replace (Any val | Any tag) with a subtype like you did with the _channel_map
   // A map of (reactor-name, channel-name) pairs to the set of reply channels
   // of reactors awaiting the named channel to be registered.
   let _await_map: MapIs[
     (String, String),
-    SetIs[Channel[(Any iso | Any val | Any tag)] val]
+    SetIs[Channel[(Any val | Any tag)] val]
+    // SetIs[Channel[Any val] val]
   ]
 
   new create(system': ReactorSystem tag) =>
@@ -135,14 +143,17 @@ actor Channels is (Service & Reactor[ChannelsEvent val])
 
     // TODO: Add reservations for lazily init'd core services.
 
+    // FIXME: ? Replace (Any val | Any tag) w/subtype
     // TODO: Channels event handling - delegate to funs
     main().events.on_event({ref
       (event: ChannelsEvent, hint: OptionalEventHint) =>
         match event
         | let reserve: ChannelReserve => None //reserve_channel(reserve)
         | let register: ChannelRegister => None //register_channel(register)
-        | let get: ChannelGet[(Any iso | Any val | Any tag)] => None //get_channel(get)
-        | let await: ChannelAwait[(Any iso | Any val | Any tag)] => None //await_channel(await)
+        | let get: ChannelGet[(Any val | Any tag)] => None //get_channel(get)
+        | let await: ChannelAwait[(Any val | Any tag)] => None //await_channel(await)
+        // | let get: ChannelGet[Any val] => None //get_channel(get)
+        // | let await: ChannelAwait[Any val] => None //await_channel
         end
     })
 
