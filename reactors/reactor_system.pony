@@ -35,6 +35,9 @@ actor ReactorSystem
     // Create a Channels service, which will register itself as a service in
     // this system, as well as its main channel within itself for use by other
     // reactors.
+    // ...
+    // TODO: ReactorSystem.create - pass in other services to be init'd by the
+    //  channels service.? Or handle directly in Channels?
     ChannelsService(this)
 /*
     // A collection of reactor system services
@@ -67,11 +70,16 @@ actor ReactorSystem
 
   be _try_fulfill_channels(promise: Promise[Channel[ChannelsEvent] val]) =>
     match _channels_service
-    | let c: Channel[ChannelsEvent] val => promise(c)
-    | None => promise.reject()
+    | let c: Channel[ChannelsEvent] val =>
+      Debug.out("Fulfilled")
+      promise(c)
+    | None =>
+      Debug.out("Rejected")
+      promise.reject()
     end
 
   be _receive_channels_service(channels_service': Channel[ChannelsEvent] val) =>
+    Debug.out("Received Channels Service!")
     _channels_service = channels_service'
 
 /* OLD - will be moved to Channels service. */
@@ -86,7 +94,6 @@ actor ReactorSystem
   be _receive_service(service: Service tag) =>
     _services.set(service)
 
-  // be _receive_reactor(reactor: Reactor[(Any iso | Any val | Any tag)] tag) =>
   be _receive_reactor(reactor: ReactorKind tag) =>
     _reactors.set(reactor)
 
@@ -98,15 +105,3 @@ actor ReactorSystem
     for service in _services.values() do
       service.shutdown()
     end
-
-/* OLD
-class ReactorSystemProxy[T: Any #send] //is Services
-  let reactor: Reactor[T]
-  let system: ReactorSystem tag
-
-  let _channels: Channel[ChannelsEvent]
-
-  new create(reactor': Reactor[T], system': ReactorSystem tag) =>
-    reactor = reactor'
-    system = system'
-*/

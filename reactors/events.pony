@@ -128,7 +128,6 @@ trait Push[T: Any #alias] is Events[T]
         let observers = SetIs[Observer[T]]
         observers.set(observer)
         set_observers(observers)
-        Debug.out("-- on_reaction: observers was SET")
       | let observers: SetIs[Observer[T]] =>
         observers.set(observer)
       end
@@ -151,15 +150,11 @@ trait Push[T: Any #alias] is Events[T]
 
   fun ref react_all(value: T, hint: (EventHint | None) = None) =>
     """ Send a `react` event to all observers """
-    Debug.out("-- push react_all")
     match get_observers()
     | let observers: SetIs[Observer[T]] =>
-      Debug.out("-- push react_all: To all observers :)")
       for observer in observers.values() do
         observer.react(value, hint)
       end
-    else
-      Debug.out("-- push react_all: observers was NONE :(")
     end
 
   fun ref except_all(x: EventError) =>
@@ -231,7 +226,6 @@ class Emitter[T: Any #alias] is (Push[T] & Events[T] & Observer[T])
 
   // Observer ...
   fun ref react(value: T, hint: (EventHint | None) = None) =>
-    Debug.out("-- emitter reacting")
     if not _get_events_unreacted() then
       react_all(value, hint)
     end

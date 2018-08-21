@@ -130,7 +130,6 @@ actor Channels is (Service & Reactor[ChannelsEvent])
   fun tag name(): String => "Channels"
   fun ref reactor_state(): ReactorState[ChannelsEvent] => _reactor_state
 
-  // be _init() =>
   fun ref init() =>
     match _system
     | let system: ReactorSystem tag =>

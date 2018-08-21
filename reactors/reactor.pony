@@ -4,25 +4,20 @@ use "promises"
 
 // primitive ReactorSystemTag
 
-
 /*
   - Track 'non-daemon' connectors, as to be able to 'terminate' the reactor when all such connectors are sealed. Basically make it so no other actors
   can send messages to the reactor. Channels may be spread far, so it may require some kind of system event telling reactors that a channel is sealed, and therefor to drop val refs to them? (Part of the default ReactorState). But how does a reactor even access/drop channel references captured in event callbacks for instance? This may be a problem.
 */
-/* Could also be made generic with ReactorSystemProxy type, for example to deal with custom services? */
 class ReactorState[T: Any #share]
 // class ReactorState[T: Any val]
   """ An object which manages internal state of a reactor. """
   let reactor: Reactor[T]
   let system: ReactorSystem tag
-//  let system_proxy: ReactorSystemProxy
   var channels_service: Channel[ChannelsEvent] val
   let main_connector: Connector[T, T]
   let register_main_channel: Bool
   let reservation: (ChannelReservation | None)
 //  let system_events: Events[SysEvent]
-  // // let connectors: MapIs[ChannelTag tag, Connector[Any]]
-  // let connectors: MapIs[Any tag, Connector[Any]]
   let connectors: MapIs[Any tag, ConnectorKind]
   var is_initialized: Bool = false
 
@@ -35,9 +30,6 @@ class ReactorState[T: Any #share]
     system = system'
     reservation = reservation''
     connectors = connectors.create()
-
-    //- Setup the system proxy (required for channels interaction)
-//?    system_proxy = ReactorSystemProxy(reactor, system)
 
     // Assign a no-op dummy channel as the channels_service..
     channels_service = BuildChannel.dummy[ChannelsEvent]()
@@ -65,8 +57,8 @@ class ReactorState[T: Any #share]
         // reactor_state' needs to be set after constructing this, so the
         // reference to `this` ReactorState is `ref` rather than `tag`
     )
-    // ..and add it to the reactor's collection
-    // connectors(main_connector.channel.channel_tag()) = main_connector
+    // ..and add it to the reactor's collection, main connectors are indexed by
+    // their reactor, rather than the channel's own channel_tag.
     connectors(reactor) = main_connector
     reactor._set_reactor_state_on_main_connector()
 
@@ -76,8 +68,8 @@ class ReactorState[T: Any #share]
 
     //- TODO: ReactorState - Setup any default event handling?
 
-    // Ensure the reactor's _init get called
-    reactor._pre_init()
+    // Ensure the reactor's init gets called
+    reactor._wrapped_init()
 
     // Add the reactor to the system's reactor set
     system._receive_reactor(reactor)
@@ -99,12 +91,6 @@ trait tag Reactor[E: Any #share] is ReactorKind
 //    fun ref sys_events(): Events[SysEvent] =>
 //      reactor_state().system_events
 
-    // TODO: Reactor.system - Use of the system must be partially applied with this reactor. The value of this reactor should then be propogated to each service, for instance to create the proper channels for service values to make their way back to the reactor. Or maybe this value is a wrapper around a ReactorSystem val, a ReactorSystemProxy?
-    /*
-    fun ref system(): ReactorSystemProxy =>
-      reactor_state().system_proxy
-    */
-
     fun ref channels(): Channel[ChannelsEvent] val =>
       reactor_state().channels_service
 
@@ -113,13 +99,11 @@ trait tag Reactor[E: Any #share] is ReactorKind
 
     fun tag shl(event: E) =>
       """ Shortcut to use a reactor reference itself as its default channel. """
-      Debug.out("-- shl: " + name())
       default_sink(consume event)
 
     fun tag default_sink(event: E) =>
       """ The reactor's default channel sink. """
       _muxed_sink[E](this, consume event)
-      Debug.out("-- default_sink: " + name())
 
     // TODO: Reactor._system_event_sink - Replace ReactorSystemTag with actual system via the proxy
 //    fun tag _system_event_sink(event: SysEvent) =>
@@ -130,26 +114,23 @@ trait tag Reactor[E: Any #share] is ReactorKind
     // be _muxed_sink[T: (Any #share | E)](channel_tag: ChannelTag tag, event: T) =>
     // be _muxed_sink[T: (Any #share | E)](channel_tag: Any tag, event: T) =>
     be _muxed_sink[T: Any #share](channel_tag: Any tag, event: T) =>
-      // FIXME: Not longer need `| E` with default sink handling itself?
       """
       The reactor's multiplexed sink for events sent to any of its channels.
       This behavior acts as a router for all events sent to the reactor,
       ensuring they make their way to the channel's corresponding emitter.
       """
       if reactor_state().is_initialized then
-        Debug.out("-- _muxed_sink: " + name())
         try
           let conn = reactor_state().connectors(channel_tag)? as Connector[T, E]
-          Debug.out("-- _muxed_sink: react called: " + name())
           conn.events.react(event)
         else
-          Debug.out("failure in _muxed_sink")
+          // TODO: Reactor._muxed_sink - log no connector match
+          None
         end
       else
         // Received an event before the actor received it's _init message.
         // Resend the event to this behavior, allowing the actor to process the
-        // _init message which is still in the que.
-        Debug.out("-- _muxed_sink: event TOO EARLY")
+        // _init message which is still in the queue.
         _muxed_sink[T](channel_tag, event)
       end
 /*
@@ -178,14 +159,14 @@ trait tag Reactor[E: Any #share] is ReactorKind
       """ Complete the reactor state's main_connector configuration. """
       main().set_reactor_state(reactor_state())
 
-    be _pre_init() =>
+    be _wrapped_init() =>
+      """ Initialize the reactor. """
       init()
       reactor_state().is_initialized = true
 
-    // TODO: Reactor.init - Ensure init'd only once
-    // be _init()
+    // TODO: Reactor.init - Provide better docstring.
     fun ref init()
-      """"""
+      """ The reactor's custom initialization code. """
 
 
 

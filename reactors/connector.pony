@@ -32,7 +32,6 @@ class Connector[T: Any #share, S: Any #share] is ConnectorKind
   T: Type of channel, events
   S: Type of reactor state
   """
-  // var _reactor_state: (ReactorState[(Any val | Any tag)] | None)
   var _reactor_state: (ReactorState[S] | None)
   var _is_sealed: Bool = false
   let channel: Channel[T] val
@@ -43,7 +42,6 @@ class Connector[T: Any #share, S: Any #share] is ConnectorKind
   new create(
     channel': Channel[T] val,
     events': Emitter[T], //Events[T]
-    // reactor_state': (ReactorState[(Any val | Any tag)] | None) = None,
     reactor_state': (ReactorState[S] | None) = None,
     reservation': (ChannelReservation | None) = None)
   =>
@@ -52,7 +50,6 @@ class Connector[T: Any #share, S: Any #share] is ConnectorKind
     _reactor_state = reactor_state'
     reservation = reservation'
 
-  // fun ref _set_reactor_state(rs: ReactorState[(Any val | Any tag)]) =>
   fun ref set_reactor_state(rs: ReactorState[S]) =>
     _reactor_state = rs
 
@@ -63,7 +60,6 @@ class Connector[T: Any #share, S: Any #share] is ConnectorKind
       events.unreact()
 
       match _reactor_state
-      // | let rs: ReactorState[(Any val | Any tag)] =>
       | let rs: ReactorState[S] =>
         // Remove the connector from the owning reactor's collection.
         try rs.connectors.remove(channel.channel_tag())? end
