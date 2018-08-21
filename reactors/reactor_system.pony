@@ -1,3 +1,4 @@
+use "debug"
 use "collections"
 use "promises"
 
@@ -30,6 +31,11 @@ actor ReactorSystem
   =>
     _reactors = _reactors.create()
     _services = _services.create()
+    
+    // Create a Channels service, which will register itself as a service in
+    // this system, as well as its main channel within itself for use by other
+    // reactors.
+    ChannelsService(this)
 /*
     // A collection of reactor system services
     let services': MapIs[ServiceBuilder, Service] trn =

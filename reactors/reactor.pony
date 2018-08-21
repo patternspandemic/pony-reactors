@@ -1,3 +1,4 @@
+use "debug"
 use "collections"
 use "promises"
 
@@ -43,6 +44,7 @@ class ReactorState[T: Any #share]
     let promise: Promise[Channel[ChannelsEvent]] = system.channels()
     promise.next[None]({
       (channels_channel: Channel[ChannelsEvent]) =>
+        Debug.out("Promised channels fulfilled :)")
         reactor._supplant_channels_service(channels_channel)
     })
 
@@ -63,7 +65,8 @@ class ReactorState[T: Any #share]
         // reference to `this` ReactorState is `ref` rather than `tag`
     )
     // ..and add it to the reactor's collection
-    connectors(main_connector.channel.channel_tag()) = main_connector
+    // connectors(main_connector.channel.channel_tag()) = main_connector
+    connectors(reactor) = main_connector
     reactor._set_reactor_state_on_main_connector()
 
     // If a ChannelReservation was provided, note to register
@@ -79,7 +82,9 @@ class ReactorState[T: Any #share]
     system._receive_reactor(reactor)
 
 
+
 interface tag ReactorKind
+  fun tag name(): String
 
 
 trait tag Reactor[E: Any #share] is ReactorKind
@@ -107,17 +112,14 @@ trait tag Reactor[E: Any #share] is ReactorKind
 
     fun tag shl(event: E) =>
       """ Shortcut to use a reactor reference itself as its default channel. """
+      Debug.out("-- shl: " + name())
       default_sink(consume event)
 
     fun tag default_sink(event: E) =>
       """ The reactor's default channel sink. """
-      /*
-      _muxed_sink[E](
-        reactor_state().main_connector.channel.channel_tag(),
-        consume event)
-      */
       _muxed_sink[E](this, consume event)
-    
+      Debug.out("-- default_sink: " + name())
+
     // TODO: Reactor._system_event_sink - Replace ReactorSystemTag with actual system via the proxy
 //    fun tag _system_event_sink(event: SysEvent) =>
 //      """ The reactor's system events channel sink. """
@@ -125,12 +127,23 @@ trait tag Reactor[E: Any #share] is ReactorKind
 
     // Extra channels, one time channels, in addition to above..
     // be _muxed_sink[T: (Any #share | E)](channel_tag: ChannelTag tag, event: T) =>
-    be _muxed_sink[T: (Any #share | E)](channel_tag: Any tag, event: T) =>
+    // be _muxed_sink[T: (Any #share | E)](channel_tag: Any tag, event: T) =>
+    be _muxed_sink[T: Any #share](channel_tag: Any tag, event: T) =>
+      // FIXME: Not longer need `| E` with default sink handling itself?
       """
       The reactor's multiplexed sink for events sent to any of its channels.
       This behavior acts as a router for all events sent to the reactor,
       ensuring they make their way to the channel's corresponding emitter.
       """
+      Debug.out("-- _muxed_sink: " + name())
+      try
+        let conn = reactor_state().connectors(channel_tag)? as Connector[T, E]
+        conn.events.react(event)
+        Debug.out("-- _muxed_sink: react called: " + name())
+      else
+        Debug.out("failure in _muxed_sink")
+      end
+/*
       iftype T <: Any iso then
         None // channel_tag lookup in reactor_state().connectors, push event to its stream..
       elseif T <: Any val then
@@ -138,10 +151,12 @@ trait tag Reactor[E: Any #share] is ReactorKind
       elseif T <: Any tag then
         None
       end
-    
+*/
+
     be _supplant_channels_service(
       channels_channel: Channel[ChannelsEvent] val)
     =>
+      Debug.out("Supplanted channels for " + name())
       reactor_state().channels_service = channels_channel
       if reactor_state().register_main_channel then
         match main().reservation
@@ -152,11 +167,12 @@ trait tag Reactor[E: Any #share] is ReactorKind
 
     be _set_reactor_state_on_main_connector() =>
       """ Complete the reactor state's main_connector configuration. """
-      main()._set_reactor_state(reactor_state())
+      main().set_reactor_state(reactor_state())
 
     // TODO: Reactor.init - Ensure init'd only once
     be _init()
       """"""
+
 
 
 ///////////////////////////////////////

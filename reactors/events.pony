@@ -1,3 +1,4 @@
+use "debug"
 use "collections"
 
 interface val EventHint
@@ -225,6 +226,7 @@ class Emitter[T: Any #alias] is (Push[T] & Events[T] & Observer[T])
 
   // Observer ...
   fun ref react(value: T, hint: (EventHint | None) = None) =>
+    Debug.out("-- react")
     if not _get_events_unreacted() then
       react_all(value, hint)
     end

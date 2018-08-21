@@ -53,7 +53,7 @@ class Connector[T: Any #share, S: Any #share] is ConnectorKind
     reservation = reservation'
 
   // fun ref _set_reactor_state(rs: ReactorState[(Any val | Any tag)]) =>
-  fun ref _set_reactor_state(rs: ReactorState[S]) =>
+  fun ref set_reactor_state(rs: ReactorState[S]) =>
     _reactor_state = rs
 
   fun ref seal() =>

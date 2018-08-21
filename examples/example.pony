@@ -1,3 +1,4 @@
+use "debug"
 use "../reactors"
 
 
@@ -7,19 +8,20 @@ actor Welcomer is Reactor[String]
 
   new create(
     system: ReactorSystem,
-    reservation: (ChannelReservation | None) = None)
-    out: Env)
+    reservation: (ChannelReservation | None) = None,
+    out: OutStream)
   =>
-    _reactor_state = ReactorState(this, system, reservation)
+    _reactor_state = ReactorState[String](this, system, reservation)
     _out = out
 
-  fun ref reactor_state(): ReactorState => _reactor_state
+  fun tag name(): String => "Welcomer"
+  fun ref reactor_state(): ReactorState[String] => _reactor_state
 
   be _init() =>
     main().events.on_event({
-      (name: String, hint: OptionalEventHint) =>
-        _out.print("Welcome " + name + "!")
-        main().seal()
+      (name: String, hint: OptionalEventHint)(main_con = main()) =>
+        _out.print("Welcome " + name + "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        main_con.seal()
     })
 
 
@@ -27,14 +29,19 @@ actor Welcomer is Reactor[String]
 actor Main is Reactor[None]
   let env: Env
   let system: ReactorSystem
-  let _reactor_state: ReactorState
+  let _reactor_state: ReactorState[None]
+  var welcomer: (Welcomer | None) = None
 
   new create(env': Env) =>
     env = env'
     system = ReactorSystem
-    _reactor_state = ReactorState(this, system)
+    _reactor_state = ReactorState[None](this, system)
+
+  fun tag name(): String => "Main"
+  fun ref reactor_state(): ReactorState[None] => _reactor_state
 
   be _init() =>
+    /*
     let conn = open[(ChannelReservation | None)]()
     channels() << ChannelReserve(conn.channel, "welcomer")
     conn.events.on_event({
@@ -48,7 +55,14 @@ actor Main is Reactor[None]
         end
         conn.seal()
     })
+    */
+    let welcomer' = Welcomer(system, None, env.out)
+    welcomer' << "Ponylang"
+    welcomer = welcomer'
+    // _wait()
 
+  be _wait() =>
+    _wait()
 
 // Other OLD ideas
 
