@@ -1,7 +1,6 @@
 use "debug"
 use "../reactors"
 
-
 actor Welcomer is Reactor[String]
   let _reactor_state: ReactorState[String]
   let _out: OutStream
@@ -17,13 +16,13 @@ actor Welcomer is Reactor[String]
   fun tag name(): String => "Welcomer"
   fun ref reactor_state(): ReactorState[String] => _reactor_state
 
-  be _init() =>
+  // be _init() =>
+  fun ref init() =>
     main().events.on_event({
       (name: String, hint: OptionalEventHint)(main_con = main()) =>
         _out.print("Welcome " + name + "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         main_con.seal()
     })
-
 
 /* Obtain reserved name prior reactor creation via making Main a reactor. */
 actor Main is Reactor[None]
@@ -40,7 +39,8 @@ actor Main is Reactor[None]
   fun tag name(): String => "Main"
   fun ref reactor_state(): ReactorState[None] => _reactor_state
 
-  be _init() =>
+  // be _init() =>
+  fun ref init() =>
     /*
     let conn = open[(ChannelReservation | None)]()
     channels() << ChannelReserve(conn.channel, "welcomer")
@@ -59,10 +59,6 @@ actor Main is Reactor[None]
     let welcomer' = Welcomer(system, None, env.out)
     welcomer' << "Ponylang"
     welcomer = welcomer'
-    // _wait()
-
-  be _wait() =>
-    _wait()
 
 // Other OLD ideas
 

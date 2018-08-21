@@ -1,3 +1,4 @@
+use "debug"
 use "ponytest"
 use "collections"
 

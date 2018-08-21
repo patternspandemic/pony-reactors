@@ -24,6 +24,7 @@ class ReactorState[T: Any #share]
   // // let connectors: MapIs[ChannelTag tag, Connector[Any]]
   // let connectors: MapIs[Any tag, Connector[Any]]
   let connectors: MapIs[Any tag, ConnectorKind]
+  var is_initialized: Bool = false
 
   new create(
     reactor': Reactor[T],
@@ -76,7 +77,7 @@ class ReactorState[T: Any #share]
     //- TODO: ReactorState - Setup any default event handling?
 
     // Ensure the reactor's _init get called
-    reactor._init()
+    reactor._pre_init()
 
     // Add the reactor to the system's reactor set
     system._receive_reactor(reactor)
@@ -135,13 +136,21 @@ trait tag Reactor[E: Any #share] is ReactorKind
       This behavior acts as a router for all events sent to the reactor,
       ensuring they make their way to the channel's corresponding emitter.
       """
-      Debug.out("-- _muxed_sink: " + name())
-      try
-        let conn = reactor_state().connectors(channel_tag)? as Connector[T, E]
-        conn.events.react(event)
-        Debug.out("-- _muxed_sink: react called: " + name())
+      if reactor_state().is_initialized then
+        Debug.out("-- _muxed_sink: " + name())
+        try
+          let conn = reactor_state().connectors(channel_tag)? as Connector[T, E]
+          Debug.out("-- _muxed_sink: react called: " + name())
+          conn.events.react(event)
+        else
+          Debug.out("failure in _muxed_sink")
+        end
       else
-        Debug.out("failure in _muxed_sink")
+        // Received an event before the actor received it's _init message.
+        // Resend the event to this behavior, allowing the actor to process the
+        // _init message which is still in the que.
+        Debug.out("-- _muxed_sink: event TOO EARLY")
+        _muxed_sink[T](channel_tag, event)
       end
 /*
       iftype T <: Any iso then
@@ -169,8 +178,13 @@ trait tag Reactor[E: Any #share] is ReactorKind
       """ Complete the reactor state's main_connector configuration. """
       main().set_reactor_state(reactor_state())
 
+    be _pre_init() =>
+      init()
+      reactor_state().is_initialized = true
+
     // TODO: Reactor.init - Ensure init'd only once
-    be _init()
+    // be _init()
+    fun ref init()
       """"""
 
 
