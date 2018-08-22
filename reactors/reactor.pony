@@ -19,6 +19,7 @@ class ReactorState[T: Any #share]
   let reservation: (ChannelReservation | None)
 //  let system_events: Events[SysEvent]
   let connectors: MapIs[Any tag, ConnectorKind]
+  var received_channels_channel: Bool = false
   var is_initialized: Bool = false
 
   new create(
@@ -31,16 +32,8 @@ class ReactorState[T: Any #share]
     reservation = reservation''
     connectors = connectors.create()
 
-    // Assign a no-op dummy channel as the channels_service..
-    channels_service = BuildChannel.dummy[ChannelsEvent]()
-    // ..and promise to supplant it with the real thing:
-    let promise: Promise[Channel[ChannelsEvent]] = system.channels()
-    promise.next[None]({
-      (channels_channel: Channel[ChannelsEvent]) =>
-        Debug.out("Promised channels fulfilled :)")
-        reactor._supplant_channels_service(channels_channel)
-    })
-
+// Channels service bit was here.
+    
 //?    //- Setup system events connector
 
     // Configure the main connector..
@@ -66,6 +59,24 @@ class ReactorState[T: Any #share]
     // the main channel when the channels service is fulfilled.
     register_main_channel = not (reservation is None)
 
+    // if reactor._is_channels_service() then
+    //   // This reactor state is for the channels service.
+    //   channels_service = main_connector.channel
+    //   received_channels_channel = true
+    // else
+      // Assign a no-op dummy channel as the channels_service..
+      channels_service = BuildChannel.dummy[ChannelsEvent]()
+      system.request_channels_channel(reactor)
+      // ..and promise to supplant it with the real thing:
+      /*
+      let promise: Promise[Channel[ChannelsEvent]] = system.channels()
+      promise.next[None]({
+        (channels_channel: Channel[ChannelsEvent]) =>
+          reactor._supplant_channels_service(channels_channel)
+      })//.next[None]({(x: None) => reactor._wrapped_init()})
+      */
+    // end
+
     //- TODO: ReactorState - Setup any default event handling?
 
     // Ensure the reactor's init gets called
@@ -78,6 +89,7 @@ class ReactorState[T: Any #share]
 
 interface tag ReactorKind
   fun tag name(): String
+  be _supplant_channels_service(channels_channel: Channel[ChannelsEvent] val)
 
 
 trait tag Reactor[E: Any #share] is ReactorKind
@@ -143,12 +155,16 @@ trait tag Reactor[E: Any #share] is ReactorKind
       end
 */
 
+    fun tag _is_channels_service(): Bool => false
+
     be _supplant_channels_service(
       channels_channel: Channel[ChannelsEvent] val)
     =>
       Debug.out("Supplanted channels for " + name())
-      reactor_state().channels_service = channels_channel
-      if reactor_state().register_main_channel then
+      let rs = reactor_state()
+      rs.channels_service = channels_channel
+      rs.received_channels_channel = true
+      if rs.register_main_channel then
         match main().reservation
         | let cr: ChannelReservation =>
           channels() << ChannelRegister(cr, main().channel)
@@ -160,9 +176,20 @@ trait tag Reactor[E: Any #share] is ReactorKind
       main().set_reactor_state(reactor_state())
 
     be _wrapped_init() =>
+      Debug.out("Attempting Init (" + name() +")")
       """ Initialize the reactor. """
-      init()
-      reactor_state().is_initialized = true
+      // TODO: Reactor._wrapped_init - Wait to call init until receive channels channel. Use same trick as with waiting for this message.
+      let rs = reactor_state()
+      if (_is_channels_service() or rs.received_channels_channel) then
+        Debug.out("Succeed Init (" + name() +")")
+        init()
+        reactor_state().is_initialized = true
+      else
+        // Try again after other messages in the queue are processed.
+        Debug.out("Failed Init (" + name() +")")
+        _wrapped_init()
+      end
+      
 
     // TODO: Reactor.init - Provide better docstring.
     fun ref init()

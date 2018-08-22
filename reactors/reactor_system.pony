@@ -14,6 +14,10 @@ actor ReactorSystem
   let _reactors: SetIs[ReactorKind tag]
   let _services: SetIs[Service tag]
 
+  // Promises to fulfill of the channels service channel
+  // let _channels_service_promises: Array[Promise[Channel[ChannelsEvent] val]]
+  let _channels_service_promises: Array[ReactorKind tag]
+
   // Standard System Services
   var _channels_service: (Channel[ChannelsEvent] val | None) = None
   // let clock: Clock
@@ -31,6 +35,7 @@ actor ReactorSystem
   =>
     _reactors = _reactors.create()
     _services = _services.create()
+    _channels_service_promises = _channels_service_promises.create()
     
     // Create a Channels service, which will register itself as a service in
     // this system, as well as its main channel within itself for use by other
@@ -63,24 +68,48 @@ actor ReactorSystem
     services = consume services'
 */
 
-  fun tag channels(): Promise[Channel[ChannelsEvent] val] =>
-     let promise = Promise[Channel[ChannelsEvent] val]
-     _try_fulfill_channels(promise)
-     promise
+  // fun tag channels(): Promise[Channel[ChannelsEvent] val] =>
+  //    let promise = Promise[Channel[ChannelsEvent] val]
+  //    _try_fulfill_channels(promise)
+  //    promise
 
-  be _try_fulfill_channels(promise: Promise[Channel[ChannelsEvent] val]) =>
+  be request_channels_channel(reactor: ReactorKind) =>
+    _try_send_channels_channel(reactor)
+  
+  fun ref _try_send_channels_channel(reactor: ReactorKind) =>
     match _channels_service
     | let c: Channel[ChannelsEvent] val =>
-      Debug.out("Fulfilled")
-      promise(c)
+      Debug.out("Fulfilled right away")
+      reactor._supplant_channels_service(c)
     | None =>
-      Debug.out("Rejected")
-      promise.reject()
+      Debug.out("Cached promise")
+      _channels_service_promises.push(reactor)
     end
+
+  // be _try_fulfill_channels(promise: Promise[Channel[ChannelsEvent] val]) =>
+  //   match _channels_service
+  //   | let c: Channel[ChannelsEvent] val =>
+  //     Debug.out("Fulfilled right away")
+  //     promise(c)
+  //   | None =>
+  //     Debug.out("Cached promise")
+  //     _channels_service_promises.push(promise)
+  //     // promise.reject()
+  //   end
 
   be _receive_channels_service(channels_service': Channel[ChannelsEvent] val) =>
     Debug.out("Received Channels Service!")
     _channels_service = channels_service'
+    // Fulfill cached promises
+    // for p in _channels_service_promises.values() do
+    //   Debug.out("Fulfilled delayed")
+    //   p(channels_service')
+    // end
+    for r in _channels_service_promises.values() do
+      Debug.out("Fulfilled delayed")
+      r._supplant_channels_service(channels_service')
+    end
+    _channels_service_promises.clear()
 
 /* OLD - will be moved to Channels service. */
   // fun clock(): Clock

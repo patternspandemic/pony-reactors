@@ -129,8 +129,10 @@ actor Channels is (Service & Reactor[ChannelsEvent])
   
   fun tag name(): String => "Channels"
   fun ref reactor_state(): ReactorState[ChannelsEvent] => _reactor_state
+  fun tag _is_channels_service(): Bool => true
 
   fun ref init() =>
+    Debug.out("Channels.init")
     match _system
     | let system: ReactorSystem tag =>
       // Propogate the main channel to the system for spread to reactors.
