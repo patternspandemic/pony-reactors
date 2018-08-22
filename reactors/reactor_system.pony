@@ -14,9 +14,8 @@ actor ReactorSystem
   let _reactors: SetIs[ReactorKind tag]
   let _services: SetIs[Service tag]
 
-  // Promises to fulfill of the channels service channel
-  // let _channels_service_promises: Array[Promise[Channel[ChannelsEvent] val]]
-  let _channels_service_promises: Array[ReactorKind tag]
+  // A cache of reactors that have requested the channels channel when not avail
+  let _cached_channels_requestors: Array[ReactorKind tag]
 
   // Standard System Services
   var _channels_service: (Channel[ChannelsEvent] val | None) = None
@@ -35,7 +34,7 @@ actor ReactorSystem
   =>
     _reactors = _reactors.create()
     _services = _services.create()
-    _channels_service_promises = _channels_service_promises.create()
+    _cached_channels_requestors = _cached_channels_requestors.create()
     
     // Create a Channels service, which will register itself as a service in
     // this system, as well as its main channel within itself for use by other
@@ -68,48 +67,25 @@ actor ReactorSystem
     services = consume services'
 */
 
-  // fun tag channels(): Promise[Channel[ChannelsEvent] val] =>
-  //    let promise = Promise[Channel[ChannelsEvent] val]
-  //    _try_fulfill_channels(promise)
-  //    promise
-
-  be request_channels_channel(reactor: ReactorKind) =>
+  be _request_channels_channel(reactor: ReactorKind) =>
+    """ Used by new reactors to request the channels service channel. """
     _try_send_channels_channel(reactor)
   
   fun ref _try_send_channels_channel(reactor: ReactorKind) =>
+    """ Try to supplant the channels channel now or cache for latter. """
     match _channels_service
-    | let c: Channel[ChannelsEvent] val =>
-      Debug.out("Fulfilled right away")
-      reactor._supplant_channels_service(c)
-    | None =>
-      Debug.out("Cached promise")
-      _channels_service_promises.push(reactor)
+    | let c: Channel[ChannelsEvent] val => reactor._supplant_channels_service(c)
+    | None => _cached_channels_requestors.push(reactor)
     end
-
-  // be _try_fulfill_channels(promise: Promise[Channel[ChannelsEvent] val]) =>
-  //   match _channels_service
-  //   | let c: Channel[ChannelsEvent] val =>
-  //     Debug.out("Fulfilled right away")
-  //     promise(c)
-  //   | None =>
-  //     Debug.out("Cached promise")
-  //     _channels_service_promises.push(promise)
-  //     // promise.reject()
-  //   end
 
   be _receive_channels_service(channels_service': Channel[ChannelsEvent] val) =>
-    Debug.out("Received Channels Service!")
+    """ Receive the channels service channel from said service. """
     _channels_service = channels_service'
-    // Fulfill cached promises
-    // for p in _channels_service_promises.values() do
-    //   Debug.out("Fulfilled delayed")
-    //   p(channels_service')
-    // end
-    for r in _channels_service_promises.values() do
-      Debug.out("Fulfilled delayed")
+    // Send the channels channel to all cached reactors awaiting supplantation.
+    for r in _cached_channels_requestors.values() do
       r._supplant_channels_service(channels_service')
     end
-    _channels_service_promises.clear()
+    _cached_channels_requestors.clear()
 
 /* OLD - will be moved to Channels service. */
   // fun clock(): Clock
@@ -121,9 +97,11 @@ actor ReactorSystem
   // fun remote(): Remote
 
   be _receive_service(service: Service tag) =>
+    """ Receive a system service. """
     _services.set(service)
 
   be _receive_reactor(reactor: ReactorKind tag) =>
+    """ Receive a system reactor. """
     _reactors.set(reactor)
 
   fun tag shutdown() =>

@@ -132,10 +132,9 @@ actor Channels is (Service & Reactor[ChannelsEvent])
   fun tag _is_channels_service(): Bool => true
 
   fun ref init() =>
-    Debug.out("Channels.init")
     match _system
     | let system: ReactorSystem tag =>
-      // Propogate the main channel to the system for spread to reactors.
+      // Propogate the main channel to the system for spread to all reactors.
       system._receive_channels_service(main().channel)
       // Add this to the system's services
       system._receive_service(this)
