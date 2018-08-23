@@ -16,7 +16,7 @@ While these abstractions form an integration of traditional actor model and func
 
 * Lack of multiple message entry points. Separate protocols handled within an actor must be encoded in a single message-handling construct, and thus need to be aware of each other. Multiple message entry points are required for message protocol isolation.
 * Inability to await specific combinations of messages. A `receive` block cannot suspend until some multitude of message types arrive. This is often skirted in basic actor implementations by storing and testing for message states, or through the use of futures/promises, but obviously increases complexity. A requirement for the expression of multi-party message protocols.
-* An actor's `receive` is a static construct and not first class. It cannot be passed to and returned from function, a requirement for message protocol composition.
+* An actor's `receive` is a static construct and not first class. It cannot be passed to and returned from functions, a requirement for message protocol composition.
 
 It is surmised here, that Pony's specific implementation of the actor model allows for a Reactors framework to be built atop it, thereby providing an approach to overcome the difficulties of reuse and protocol composition, and paving the way to build a protocol stack of reusable distributed computing components in Pony.
 
@@ -24,7 +24,7 @@ Pony absolves itself from the above limitations in the following way:
 
 * Pony includes multiple message entry points in its implementation by way of actor behaviors. Generic behaviors may then form the basis needed for protocol isolation.
 * While Pony cannot await specific combinations of messages sent to behaviors, it is further surmised that, just like a Reactor, a Pony actor can use internal event stream composition to essentially await any combination of messages, and avoid the need for a dedicated multi-receive construct.
-* Message receives by way of behaviors can be made first class through partial application, fulfilling the requirement for protocol composition.
+* Message receives by way of behaviors can be made first class through partial application or captures, fulfilling the requirement for protocol composition.
 
 The _pony-reactors_ framework is inspired and informed by:
 

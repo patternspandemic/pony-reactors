@@ -84,21 +84,52 @@ trait tag Reactor[E: Any #share] is ReactorKind
 // trait tag Reactor[E: Any val] is ReactorKind
   """"""
     fun ref reactor_state(): ReactorState[E]
+      """ Required accessor for the reactor's basic state. """
 
     fun ref main(): Connector[E, E] =>
+      """ The reactor's main connector. """
       reactor_state().main_connector
 
 //    fun ref sys_events(): Events[SysEvent] =>
 //      reactor_state().system_events
 
     fun ref channels(): Channel[ChannelsEvent] val =>
+      """ Accessor for the channels service channel. """
       reactor_state().channels_service
 
-    // TODO: Reactor.open - Support opening new connectors.
-    fun ref open() => None
+    fun ref open[C: Any #share](
+      reservation: (ChannelReservation | None) = None)
+      : Connector[C, E]
+    =>
+      """ Open another connector for use by this reactor. """
+      let channel_tag: ChannelTag = ChannelTag
+      // Create a partially applied version of the `_muxed_sink` with the
+      // `channel_tag` uniquely identifying this connector's channel.
+      let pa_muxed: {(C)} val = recover val this~_muxed_sink[C](channel_tag) end
+      // Build the connector.
+      let connector = Connector[C, E](
+        where
+          channel' = object val is Channel[C]
+            let _channel_tag: ChannelTag = channel_tag
+            let _pa_muxed: {(C)} val = pa_muxed
+            fun channel_tag(): ChannelTag => _channel_tag
+            fun shl(ev: C) =>
+              _pa_muxed(consume ev)
+          end,
+          events' = BuildEvents.emitter[C](),
+          reactor_state' = reactor_state(),
+          reservation' = reservation
+      )
+      // Add the new connector to the reactor's collection,
+      // indexed by the `channel_tag`.
+      reactor_state().connectors(channel_tag) = connector
+      // Return the connector for use.
+      connector
+
+    // TODO: Reactor.open_isolate() - A non-isolate reactor should still be able to open isolate channels of its own. Same with an IsolateReactor, which should be able to open non-isolate connectors.
 
     fun tag shl(event: E) =>
-      """ Shortcut to use a reactor reference itself as its default channel. """
+      """ Shortcut to use a reactor reference as its default channel. """
       default_sink(consume event)
 
     fun tag default_sink(event: E) =>

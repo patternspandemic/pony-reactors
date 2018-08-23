@@ -1,5 +1,6 @@
 
 class tag ChannelTag
+  """ A unique identifier for a channel. """
 
 
 interface val ChannelKind

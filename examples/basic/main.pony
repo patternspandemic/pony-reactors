@@ -38,10 +38,12 @@ actor Main is Reactor[None]
   fun ref reactor_state(): ReactorState[None] => _reactor_state
 
   fun ref init() =>
+    /* Non-registered Welcomer */
     let welcomer = Welcomer(system, None, env.out)
     welcomer << "Ponylang"
     welcomer << "Reactors"
-    /*
+
+    /* Registered Welcomer * /
     let conn = open[(ChannelReservation | None)]()
     channels() << ChannelReserve(conn.channel, "welcomer")
     conn.events.on_event({
