@@ -91,11 +91,12 @@ type ChannelsEvent is
 class val ChannelReservation
   """"""
   let reserved_key: (String, String)
-  new val create(
-    reactor_name': String,
-    channel_name': String = "main")
+  new val create(key: (String, String))
+    // reactor_name': String,
+    // channel_name': String = "main")
   =>
-    reserved_key = (reactor_name', channel_name')
+    // reserved_key = (reactor_name', channel_name')
+    reserved_key = key
 
 // TODO: Channels service
 //- Give it the responsibility to lazily create services on demand. If any reactor awaits a channel that describes a reserved standard or custom? service, instantiate that reactor service and provide it. (Replaces ReactorSystemProxy, system() call with regular channel requests.) The Channels channel should be preemptively provided to all ReactorState, given its importance, perhaps via Promise from the ReactorSystem.
@@ -131,6 +132,24 @@ actor Channels is (Service & Reactor[ChannelsEvent])
   fun ref reactor_state(): ReactorState[ChannelsEvent] => _reactor_state
   fun tag _is_channels_service(): Bool => true
 
+  fun ref _reserve_channel(ev_reserve: ChannelReserve) =>
+    // Build a tuple key out of the reactor, channel names for which the
+    // channel should be mapped to.
+    let key = (ev_reserve.reactor_name, ev_reserve.channel_name)
+    if _channel_map.contains(key) then
+      // A channel or reservation is already mapped. Deny the requested reserve.
+      ev_reserve.reply_channel << None
+end
+/*    else
+      // The mapping is available.
+      let reservation = ChannelReservation(key)
+      // Map the key to the reservation until a ChannelRegister event attempts
+      // to register a channel with the reservation as its authority to do so.
+      _channel_map(key) = reservation
+      // Reply with the reservation
+      ev_reserve.reply_channel << reservation
+    end
+*/
   fun ref init() =>
     match _system
     | let system: ReactorSystem tag =>
@@ -149,13 +168,14 @@ actor Channels is (Service & Reactor[ChannelsEvent])
     //  - Then will likely need to reply through the event itself, only it knows chan type?
     // i.e. get.reply(_channel_map((get.reactor_name,get.channel_name))?) which will cast subtype to `E`
     // TODO: Channels event handling - delegate to funs
+    let pa_reserve_channel = this~_reserve_channel()
     main().events.on_event({ref
       (event: ChannelsEvent, hint: OptionalEventHint) =>
         match event
-        | let reserve: ChannelReserve => None //reserve_channel(reserve)
-        | let register: ChannelRegister => None //register_channel(register)
-        | let get: ChannelGet[(Any val | Any tag)] => None //get_channel(get)
-        | let await: ChannelAwait[(Any val | Any tag)] => None //await_channel(await)
+        | let ev_reserve: ChannelReserve => pa_reserve_channel(ev_reserve)
+        | let ev_register: ChannelRegister => None //register_channel(register)
+        | let ev_get: ChannelGet[(Any val | Any tag)] => None //get_channel(get)
+        | let ev_await: ChannelAwait[(Any val | Any tag)] => None //await_channel(await)
         // | let get: ChannelGet[Any val] => None //get_channel(get)
         // | let await: ChannelAwait[Any val] => None //await_channel
         end

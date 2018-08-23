@@ -76,6 +76,7 @@ class ReactorState[T: Any #share]
 
 
 interface tag ReactorKind
+  // TODO: ReactorKind.name - Integrate with reserved name of a reactor?
   fun tag name(): String
   be _supplant_channels_service(channels_channel: Channel[ChannelsEvent] val)
 
@@ -103,7 +104,7 @@ trait tag Reactor[E: Any #share] is ReactorKind
     =>
       """ Open another connector for use by this reactor. """
       let channel_tag: ChannelTag = ChannelTag
-      // Create a partially applied version of the `_muxed_sink` with the
+      // Create a partially applied version of `_muxed_sink` with the
       // `channel_tag` uniquely identifying this connector's channel.
       let pa_muxed: {(C)} val = recover val this~_muxed_sink[C](channel_tag) end
       // Build the connector.
@@ -186,8 +187,10 @@ trait tag Reactor[E: Any #share] is ReactorKind
       rs.channels_service = channels_channel
       rs.received_channels_channel = true
       if rs.register_main_channel then
-        match main().reservation
+        // match main().reservation
+        match rs.reservation
         | let cr: ChannelReservation =>
+          Debug.out("Sent ChannelRegister for " + name() + "'s main channel'")
           channels() << ChannelRegister(cr, main().channel)
         end
       end

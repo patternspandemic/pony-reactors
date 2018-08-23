@@ -39,11 +39,11 @@ actor Main is Reactor[None]
 
   fun ref init() =>
     /* Non-registered Welcomer */
-    let welcomer = Welcomer(system, None, env.out)
-    welcomer << "Ponylang"
-    welcomer << "Reactors"
+    // let welcomer = Welcomer(system, None, env.out)
+    // welcomer << "Ponylang"
+    // welcomer << "Reactors"
 
-    /* Registered Welcomer * /
+    /* Registered Welcomer */
     let conn = open[(ChannelReservation | None)]()
     channels() << ChannelReserve(conn.channel, "welcomer")
     conn.events.on_event({
@@ -51,10 +51,9 @@ actor Main is Reactor[None]
         match res
         | let cr: ChannelReservation =>
           let welcomer = Welcomer(system, cr, env.out)
-          welcomer << "Ponylang"
+          welcomer << "Reserved Ponylang"
         | None =>
           env.out.print("Denied 'welcomer' reservation")
         end
         conn.seal()
     })
-    */
