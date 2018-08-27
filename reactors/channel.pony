@@ -1,4 +1,3 @@
-use "debug"
 
 class tag ChannelTag
   """ A unique identifier for a channel. """
@@ -8,7 +7,6 @@ interface val ChannelKind
 
 
 trait val Channel[E: Any #share] is ChannelKind
-// trait val Channel[E: Any val] is ChannelKind
   """
   Channels are the conduit of inter-reactor event propogation, and introduce
   communication paths into a reactor.
@@ -25,8 +23,7 @@ trait val Channel[E: Any #share] is ChannelKind
 
 
 primitive BuildChannel
-  // fun dummy[T: Any #share](): Channel[T] =>
-  fun dummy[T: Any val](): Channel[T] =>
+  fun dummy[T: Any #share](): Channel[T] =>
     """ Builds a dummy channel that doesn't forward events. """
     object val is Channel[T]
       let _channel_tag: ChannelTag = ChannelTag

@@ -26,8 +26,6 @@ So plan:
 - Maybe add a `iso` to `ref` translation fun that can be overridden for when Isolated* C and E types are not the same underlying (may not be worth it)?
 */
 
-// class Connector[T: Any #share] is ConnectorKind
-// class Connector[T: Any val, S: Any val] is ConnectorKind
 class Connector[T: Any #share, S: Any #share] is ConnectorKind
   """
   T: Type of channel, events
@@ -37,7 +35,7 @@ class Connector[T: Any #share, S: Any #share] is ConnectorKind
   var _is_sealed: Bool = false
   let channel: Channel[T] val
   var reservation: (ChannelReservation | None)
-  let events: Emitter[T] //Events[T] ref
+  let events: Emitter[T] //Events[T]
 
   // TODO: Connector.create - Handle reservations.
   // TODO: Connector.create - Provide default events?

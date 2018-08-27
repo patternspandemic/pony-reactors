@@ -1,6 +1,5 @@
 use "debug"
 use "collections"
-//use "promises"
 
 // type SysEvent is ...
 
@@ -10,7 +9,6 @@ actor ReactorSystem
   """
   A system used to create, track, and identify reactors.
   """
-  // let _reactors: SetIs[Reactor[(Any iso | Any val | Any tag)]]
   let _reactors: SetIs[ReactorKind tag]
   let _services: SetIs[Service tag]
 

@@ -49,7 +49,6 @@ class val ChannelRegister
 
 // Maybe can use Channel[ChannelKind] in place of Channel[E] to make work with Isolate version?
 class val ChannelGet[E: Any #share]
-// class val ChannelGet[E: Any val]
   """"""
   let reactor_name: String
   let channel_name: String
@@ -65,7 +64,6 @@ class val ChannelGet[E: Any #share]
 
 // Maybe can use Channel[ChannelKind] in place of Channel[E] to make work with Isolate version?
 class val ChannelAwait[E: Any #share]
-// class val ChannelAwait[E: Any val]
   """"""
   let reactor_name: String
   let channel_name: String
@@ -91,11 +89,7 @@ type ChannelsEvent is
 class val ChannelReservation
   """"""
   let reserved_key: (String, String)
-  new val create(key: (String, String))
-    // reactor_name': String,
-    // channel_name': String = "main")
-  =>
-    // reserved_key = (reactor_name', channel_name')
+  new val create(key: (String, String)) =>
     reserved_key = key
 
 // TODO: Channels service
@@ -109,7 +103,6 @@ actor Channels is (Service & Reactor[ChannelsEvent])
   // reservation used to guarrentee the registered name pair.
   let _channel_map: MapIs[
     (String, String),
-    // (Channel[(Any iso | Any val | Any tag)] val | ChannelReservation val)
     (ChannelKind val | ChannelReservation val)
   ]
 
@@ -150,29 +143,14 @@ actor Channels is (Service & Reactor[ChannelsEvent])
     end
 
   be _channels_pre_init() =>
-    // match _system
-    // | let system: ReactorSystem tag =>
-    //   // Propogate the main channel to the system for spread to all reactors.
-    //   system._receive_channels_service(main().channel)
-    //   // Add this to the system's services
-    //   system._receive_service(this)
-    // end
-
-    // // Register the main channel in the named channel map as well.
-    // _channel_map(("channels", "main")) = main().channel
-
-//    main().events.on({ref 
-//      () => Debug.out("Hmmm")
-//    })
-//    main().events.on({ref 
-//      () => Debug.out("Huh")
-//    })
+    // FIXME: ? Replace (Any val | Any tag) w/subtype
+    //  - Then will likely need to reply through the event itself, only it knows chan type?
+    // i.e. get.reply(_channel_map((get.reactor_name,get.channel_name))?) which will cast subtype to `E`
+    // TODO: Channels event handling - delegate to funs
     main().events.on_event({ref
       (event: ChannelsEvent, hint: OptionalEventHint)(self = this) =>
         match event
-        | let ev_reserve: ChannelReserve =>
-//          pa_reserve_channel(ev_reserve)
-          self._reserve_channel(ev_reserve)
+        | let ev_reserve: ChannelReserve => self._reserve_channel(ev_reserve)
         | let ev_register: ChannelRegister => None //register_channel(register)
         | let ev_get: ChannelGet[(Any val | Any tag)] => None //get_channel(get)
         | let ev_await: ChannelAwait[(Any val | Any tag)] => None //await_channel(await)
@@ -182,13 +160,6 @@ actor Channels is (Service & Reactor[ChannelsEvent])
     })
 
     // TODO: Add reservations for lazily init'd core services.
-    // _wrapped_init()
-    init()
-
-  fun ref init() =>
-    // main().events.on({ref 
-    //   () => Debug.out("Hmmm")
-    // })
 
     match _system
     | let system: ReactorSystem tag =>
@@ -201,30 +172,10 @@ actor Channels is (Service & Reactor[ChannelsEvent])
     // Register the main channel in the named channel map as well.
     _channel_map(("channels", "main")) = main().channel
 
-    // TODO: Add reservations for lazily init'd core services.
-
-    // FIXME: ? Replace (Any val | Any tag) w/subtype
-    //  - Then will likely need to reply through the event itself, only it knows chan type?
-    // i.e. get.reply(_channel_map((get.reactor_name,get.channel_name))?) which will cast subtype to `E`
-    // TODO: Channels event handling - delegate to funs
-/*    let pa_reserve_channel = this~_reserve_channel()
-    main().events.on_event({ref
-      (event: ChannelsEvent, hint: OptionalEventHint)(self = this) =>
-        Debug.out("Channels received an event...")
-        match event
-        | let ev_reserve: ChannelReserve =>
-          Debug.out("Channels << ChannelReserve event")
-//          pa_reserve_channel(ev_reserve)
-          self._reserve_channel(ev_reserve)
-        | let ev_register: ChannelRegister => None //register_channel(register)
-        | let ev_get: ChannelGet[(Any val | Any tag)] => None //get_channel(get)
-        | let ev_await: ChannelAwait[(Any val | Any tag)] => None //await_channel(await)
-        // | let get: ChannelGet[Any val] => None //get_channel(get)
-        // | let await: ChannelAwait[Any val] => None //await_channel
-        end
-    })
-*/
+    // Channels service reactor is initialized
     reactor_state().is_initialized = true
+
+  fun ref init() => None
 
   be shutdown() =>
     // Send shutdown to core services needed?

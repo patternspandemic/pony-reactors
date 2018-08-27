@@ -8,7 +8,6 @@ use "collections"
   can send messages to the reactor. Channels may be spread far, so it may require some kind of system event telling reactors that a channel is sealed, and therefor to drop val refs to them? (Part of the default ReactorState). But how does a reactor even access/drop channel references captured in event callbacks for instance? This may be a problem.
 */
 class ReactorState[T: Any #share]
-// class ReactorState[T: Any val]
   """ An object which manages internal state of a reactor. """
   let reactor: Reactor[T]
   let system: ReactorSystem tag
@@ -70,6 +69,7 @@ class ReactorState[T: Any #share]
     // Ensure the reactor's init gets called
 //    reactor._wrapped_init()
     if reactor._is_channels_service() then
+      // TODO: May be able to revert to single init for channels service.
       reactor._channels_pre_init()
     else
       reactor._wrapped_init()
@@ -87,7 +87,6 @@ interface tag ReactorKind
 
 
 trait tag Reactor[E: Any #share] is ReactorKind
-// trait tag Reactor[E: Any val] is ReactorKind
   """"""
     fun ref reactor_state(): ReactorState[E]
       """ Required accessor for the reactor's basic state. """
@@ -108,21 +107,19 @@ trait tag Reactor[E: Any #share] is ReactorKind
       : Connector[C, E]
     =>
       """ Open another connector for use by this reactor. """
-      let channel_tag: ChannelTag = ChannelTag
-      // Create a partially applied version of `_muxed_sink` with the
-      // `channel_tag` uniquely identifying this connector's channel.
-//      let pa_muxed: {(C)} val = recover val this~_muxed_sink[C](channel_tag) end
-      let self: Reactor[E] tag = this
+      let channel_tag: ChannelTag = ChannelTag // Unique tag for the connector's channel.
+      let self: Reactor[E] tag = this // For referencing this reactor in the channel.
       // Build the connector.
       let connector = Connector[C, E](
         where
           channel' = object val is Channel[C]
             let _channel_tag: ChannelTag = channel_tag
-//            let _pa_muxed: {(C)} val = pa_muxed
             fun channel_tag(): ChannelTag => _channel_tag
-            fun shl(ev: C) =>
-//              _pa_muxed(consume ev)
-              self.muxed_sink[C](_channel_tag, consume ev)
+            fun shl(event: C) =>
+              // Pass the event along to the reactor's `_muxed_sink` for
+              // processing by this connector's event stream, which will be
+              // ID'd by the related channel tag.
+              self.muxed_sink[C](_channel_tag, consume event)
           end,
           events' = BuildEvents.emitter[C](),
           reactor_state' = reactor_state(),
@@ -146,14 +143,12 @@ trait tag Reactor[E: Any #share] is ReactorKind
 
     fun tag muxed_sink[T: Any #share](channel_tag: Any tag, event: T) =>
       _muxed_sink[T](channel_tag, event)
+
     // TODO: Reactor._system_event_sink - Replace ReactorSystemTag with actual system via the proxy
 //    fun tag _system_event_sink(event: SysEvent) =>
 //      """ The reactor's system events channel sink. """
 //      _muxed_sink[SysEvent](ReactorSystemTag, consume event)
 
-    // Extra channels, one time channels, in addition to above..
-    // be _muxed_sink[T: (Any #share | E)](channel_tag: ChannelTag tag, event: T) =>
-    // be _muxed_sink[T: (Any #share | E)](channel_tag: Any tag, event: T) =>
     be _muxed_sink[T: Any #share](channel_tag: Any tag, event: T) =>
       """
       The reactor's multiplexed sink for events sent to any of its channels.
@@ -196,7 +191,6 @@ trait tag Reactor[E: Any #share] is ReactorKind
       rs.channels_service = channels_channel
       rs.received_channels_channel = true
       if rs.register_main_channel then
-        // match main().reservation
         match rs.reservation
         | let cr: ChannelReservation =>
           channels() << ChannelRegister(cr, main().channel)
@@ -212,7 +206,7 @@ trait tag Reactor[E: Any #share] is ReactorKind
       None
 
     be _wrapped_init() =>
-      """ Initialize the reactor after receiving the channels channel. """
+      """ Initialize the reactor after receiving the channels service channel. """
       let rs = reactor_state()
       // The Channels reactor need not wait for its own channel. Commence when
       // the channels channel is received.
