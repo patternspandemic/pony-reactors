@@ -19,7 +19,7 @@ actor Welcomer is Reactor[String]
 
   fun ref init() =>
     main().events.on_event({
-      (name: String, hint: OptionalEventHint)(main_con = main()) =>
+      (name: String, hint: OptionalEventHint)(self = this) =>
         _out.print("Welcome " + name + "!")
     })
 
@@ -41,7 +41,6 @@ actor Main is Reactor[None]
     /* Non-registered Welcomer */
     let welcomer = Welcomer(system, None, env.out)
     welcomer << "Ponylang"
-    welcomer << "Reactors"
 
     /* Registered Welcomer */
     let conn = open[(ChannelReservation | None)]()

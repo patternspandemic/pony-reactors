@@ -37,11 +37,9 @@ class val ChannelReserve
 class val ChannelRegister
   """ Register, replace, or forget a channel with a ChannelReservation. """
   let reservation: ChannelReservation val
-  // let channel: (Channel[(Any iso | Any val | Any tag)] val | None)
   let channel: (ChannelKind val | None)
   new val create(
     reservation': ChannelReservation val,
-    // channel': (Channel[(Any iso | Any val | Any tag)] val | None))
     channel': (ChannelKind val | None))
   =>
     reservation = reservation'
@@ -103,7 +101,7 @@ actor Channels is (Service & Reactor[ChannelsEvent])
   // reservation used to guarrentee the registered name pair.
   let _channel_map: MapIs[
     (String, String),
-    (ChannelKind val | ChannelReservation val)
+    ((ChannelKind val, ChannelReservation val) | ChannelReservation val)
   ]
 
   // FIXME: Probs gonna need to replace (Any val | Any tag) with a subtype like you did with the _channel_map. Probs also gonna have to store the await event so the awaited ch can be sent back on the reply ch typed correctly.
@@ -142,18 +140,59 @@ actor Channels is (Service & Reactor[ChannelsEvent])
       ev_reserve.reply_channel << reservation
     end
 
+  fun ref _register_channel(ev_register: ChannelRegister) =>
+    let reservation = ev_register.reservation
+    let key = reservation.reserved_key
+    let channel = ev_register.channel
+    // Reservations are only honored when its key been reserved.
+    if _channel_map.contains(key) then
+      match channel
+      | None => // Forget this reservation
+        try _channel_map.remove(key)? end
+      | let channel': ChannelKind val => // Register or replace.
+        try
+          let value = _channel_map(key)?
+          match value
+          | let reservation': ChannelReservation val =>
+            // Register if the reservations match.
+            if reservation' is reservation then
+              _channel_map(key) = (channel, reservation)
+            end
+          | (let ck: ChannelKind val, let cr: ChannelReservation val) =>
+            // TODO: Channels._register_channel - Test channel replacement.
+            // Replace existing registration if the reservations match.
+            if cr is reservation then
+              _channel_map(key) = (channel, reservation)
+            end
+          end
+        end
+      end
+    end
+    // .. otherwise the reservation has expired and is ignored.
+
+  // TODO: Channels service - _get_channel
+  fun ref _get_channel(ev_get: ChannelGet[(Any val | Any tag)]) =>
+    None
+
+  // TODO: Channels service - _await_channel
+  fun ref _await_channel(ev_await: ChannelAwait[(Any val | Any tag)]) =>
+    None
+
   fun ref init() =>
     // FIXME: ? Replace (Any val | Any tag) w/subtype
     //  - Then will likely need to reply through the event itself, only it knows chan type?
     // i.e. get.reply(_channel_map((get.reactor_name,get.channel_name))?) which will cast subtype to `E`
-    // TODO: Channels event handling - delegate to funs
     main().events.on_event({ref
       (event: ChannelsEvent, hint: OptionalEventHint)(self = this) =>
         match event
-        | let ev_reserve: ChannelReserve => self._reserve_channel(ev_reserve)
-        | let ev_register: ChannelRegister => None //register_channel(register)
-        | let ev_get: ChannelGet[(Any val | Any tag)] => None //get_channel(get)
-        | let ev_await: ChannelAwait[(Any val | Any tag)] => None //await_channel(await)
+        | let ev_reserve: ChannelReserve =>
+          self._reserve_channel(ev_reserve)
+        | let ev_register: ChannelRegister =>
+          self._register_channel(ev_register)
+        | let ev_get: ChannelGet[(Any val | Any tag)] =>
+          self._get_channel(ev_get)
+        | let ev_await: ChannelAwait[(Any val | Any tag)] =>
+          self._await_channel(ev_await)
         // | let get: ChannelGet[Any val] => None //get_channel(get)
         // | let await: ChannelAwait[Any val] => None //await_channel
         end
@@ -170,7 +209,8 @@ actor Channels is (Service & Reactor[ChannelsEvent])
     end
 
     // Register the main channel in the named channel map as well.
-    _channel_map(("channels", "main")) = main().channel
+    let key = ("channels", "main")
+    _channel_map(key) = (main().channel, ChannelReservation(key))
 
     // Channels service reactor is initialized
     reactor_state().is_initialized = true
