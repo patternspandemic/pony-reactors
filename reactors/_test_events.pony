@@ -28,11 +28,8 @@ class _TestEmitter[T: Any #alias] is (Push[T] & Events[T] & Observer[T])
     _emitter.react(value, hint)
   fun ref except(x: EventError) => _emitter.except(x)
   fun ref unreact() => _emitter.unreact()
-//  fun ref get_observers(): (SetIs[Observer[T]] | None) =>
   fun ref get_observers(): SetIs[Observer[T]] =>
     _emitter.get_observers()
-  fun ref set_observers(observers: (SetIs[Observer[T]] | None)) =>
-    _emitter.set_observers(observers)
   fun _get_events_unreacted(): Bool => _emitter._get_events_unreacted()
   fun ref _set_events_unreacted(value: Bool) =>
     _emitter._set_events_unreacted(value)

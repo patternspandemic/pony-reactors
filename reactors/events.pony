@@ -103,11 +103,8 @@ trait Events[T: Any #alias]
 trait Push[T: Any #alias] is Events[T]
   """ Default Implementation of an event stream. """
   // Push state accessors ...
-//  fun ref get_observers(): (SetIs[Observer[T]] | None)
   fun ref get_observers(): SetIs[Observer[T]]
     """ Getter for `_observers` """
-  fun ref set_observers(observers: (SetIs[Observer[T]] | None))
-    """ Setter for `_observers` """
   fun _get_events_unreacted(): Bool
     """ Getter for `_events_unreacted` """
   fun ref _set_events_unreacted(value: Bool)
@@ -124,14 +121,7 @@ trait Push[T: Any #alias] is Events[T]
       BuildSubscription.empty()
     else
       // Add the observer to the set of observers, create the set when needed.
-      match get_observers()
-//      | None =>
-//        let observers = SetIs[Observer[T]]
-//        observers.set(observer)
-//        set_observers(observers)
-      | let observers: SetIs[Observer[T]] =>
-        observers.set(observer)
-      end
+      get_observers().set(observer)
       // Return a subscription of the observer, allowing it to be unsubscribe.
       _new_subscription(observer)
     end
@@ -142,48 +132,30 @@ trait Push[T: Any #alias] is Events[T]
 
   fun ref _remove_reaction(observer: Observer[T]) =>
     """ Remove `observer` from the set of observers, unsubscribing it. """
-    match get_observers()
-    | let observers: SetIs[Observer[T]] =>
-      observers.unset(observer)
-      // Assign set of observers to None if empty.
-      if observers.size() == 0 then set_observers(None) end
-    end
+    get_observers().unset(observer)
 
   fun ref react_all(value: T, hint: (EventHint | None) = None) =>
     """ Send a `react` event to all observers """
-    match get_observers()
-    | let observers: SetIs[Observer[T]] =>
-      for observer in observers.values() do
-        observer.react(value, hint)
-      end
+    for observer in get_observers().values() do
+      observer.react(value, hint)
     end
 
   fun ref except_all(x: EventError) =>
     """ Send an `except` event to all observers """
-    match get_observers()
-    | let observers: SetIs[Observer[T]] =>
-      for observer in observers.values() do
-        observer.except(x)
-      end
+    for observer in get_observers().values() do
+      observer.except(x)
     end
 
   fun ref unreact_all() =>
     """ Send an `unreact` event to all observers """
     _set_events_unreacted(true)
-    match get_observers()
-    | let observers: SetIs[Observer[T]] =>
-      for observer in observers.values() do
-        observer.unreact()
-      end
+    let observers = get_observers()
+    for observer in observers.values() do
+      observer.unreact()
     end
-    // Assign set of observers to None, as no more events will be propogated.
-    set_observers(None)
+    observers.clear()
 
   fun ref has_subscriptions(): Bool =>
-//    match get_observers()
-//    | None => false
-//    | let _: SetIs[Observer[T]] => true
-//    end
     if get_observers().size() > 0 then true else false end
 
 
@@ -216,16 +188,11 @@ class Emitter[T: Any #alias] is (Push[T] & Events[T] & Observer[T])
   An event source that emits events when `react`, `except`, or `unreact` is called. Emitters are simultaneously an event stream and observer.
   """
   // Push state
-//  var _observers: (SetIs[Observer[T]] | None) = None
   var _observers: SetIs[Observer[T]] = SetIs[Observer[T]]
   var _events_unreacted: Bool = false
 
   // Implemented state accessors
-//  fun ref get_observers(): (SetIs[Observer[T]] | None) => _observers
   fun ref get_observers(): SetIs[Observer[T]] => _observers
-  fun ref set_observers(observers: (SetIs[Observer[T]] | None)) =>
-//    _observers = observers
-    None
   fun _get_events_unreacted(): Bool => _events_unreacted
   fun ref _set_events_unreacted(value: Bool) => _events_unreacted = value
 
@@ -258,7 +225,6 @@ class Mutable[M: Any ref] is (Push[M] & Events[M])
   accessing the signal's `content` directly.
   """
   // Push state
-//  var _observers: (SetIs[Observer[M]] | None) = None
   var _observers: SetIs[Observer[M]] = SetIs[Observer[M]]
   var _events_unreacted: Bool = false
   // Underlying Mutable state
@@ -268,11 +234,7 @@ class Mutable[M: Any ref] is (Push[M] & Events[M])
     content = content'
 
   // Implemented state accessors
-//  fun ref get_observers(): (SetIs[Observer[M]] | None) => _observers
   fun ref get_observers(): SetIs[Observer[M]] => _observers
-  fun ref set_observers(observers: (SetIs[Observer[M]] | None)) =>
-//    _observers = observers
-    None
   fun _get_events_unreacted(): Bool => _events_unreacted
   fun ref _set_events_unreacted(value: Bool) => _events_unreacted = value
 
@@ -312,3 +274,4 @@ primitive BuildEvents
   sync
   single
   */
+  
