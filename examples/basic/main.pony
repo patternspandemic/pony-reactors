@@ -39,9 +39,9 @@ actor Main is Reactor[None]
 
   fun ref init() =>
     /* Non-registered Welcomer */
-    // let welcomer = Welcomer(system, None, env.out)
-    // welcomer << "Ponylang"
-    // welcomer << "Reactors"
+    let welcomer = Welcomer(system, None, env.out)
+    welcomer << "Ponylang"
+    welcomer << "Reactors"
 
     /* Registered Welcomer */
     let conn = open[(ChannelReservation | None)]()

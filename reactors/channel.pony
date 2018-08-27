@@ -1,3 +1,4 @@
+use "debug"
 
 class tag ChannelTag
   """ A unique identifier for a channel. """

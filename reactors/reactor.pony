@@ -68,7 +68,12 @@ class ReactorState[T: Any #share]
     //- TODO: ReactorState - Setup any default event handling?
 
     // Ensure the reactor's init gets called
-    reactor._wrapped_init()
+//    reactor._wrapped_init()
+    if reactor._is_channels_service() then
+      reactor._channels_pre_init()
+    else
+      reactor._wrapped_init()
+    end
 
     // Add the reactor to the system's reactor set
     system._receive_reactor(reactor)
@@ -106,16 +111,18 @@ trait tag Reactor[E: Any #share] is ReactorKind
       let channel_tag: ChannelTag = ChannelTag
       // Create a partially applied version of `_muxed_sink` with the
       // `channel_tag` uniquely identifying this connector's channel.
-      let pa_muxed: {(C)} val = recover val this~_muxed_sink[C](channel_tag) end
+//      let pa_muxed: {(C)} val = recover val this~_muxed_sink[C](channel_tag) end
+      let self: Reactor[E] tag = this
       // Build the connector.
       let connector = Connector[C, E](
         where
           channel' = object val is Channel[C]
             let _channel_tag: ChannelTag = channel_tag
-            let _pa_muxed: {(C)} val = pa_muxed
+//            let _pa_muxed: {(C)} val = pa_muxed
             fun channel_tag(): ChannelTag => _channel_tag
             fun shl(ev: C) =>
-              _pa_muxed(consume ev)
+//              _pa_muxed(consume ev)
+              self.muxed_sink[C](_channel_tag, consume ev)
           end,
           events' = BuildEvents.emitter[C](),
           reactor_state' = reactor_state(),
@@ -137,6 +144,8 @@ trait tag Reactor[E: Any #share] is ReactorKind
       """ The reactor's default channel sink. """
       _muxed_sink[E](this, consume event)
 
+    fun tag muxed_sink[T: Any #share](channel_tag: Any tag, event: T) =>
+      _muxed_sink[T](channel_tag, event)
     // TODO: Reactor._system_event_sink - Replace ReactorSystemTag with actual system via the proxy
 //    fun tag _system_event_sink(event: SysEvent) =>
 //      """ The reactor's system events channel sink. """
@@ -190,7 +199,6 @@ trait tag Reactor[E: Any #share] is ReactorKind
         // match main().reservation
         match rs.reservation
         | let cr: ChannelReservation =>
-          Debug.out("Sent ChannelRegister for " + name() + "'s main channel'")
           channels() << ChannelRegister(cr, main().channel)
         end
       end
@@ -199,14 +207,19 @@ trait tag Reactor[E: Any #share] is ReactorKind
       """ Complete the reactor state's main_connector configuration. """
       main().set_reactor_state(reactor_state())
 
+    be _channels_pre_init() =>
+      """ Only to be overridden by the channels service reactor. """
+      None
+
     be _wrapped_init() =>
       """ Initialize the reactor after receiving the channels channel. """
       let rs = reactor_state()
       // The Channels reactor need not wait for its own channel. Commence when
       // the channels channel is received.
-      if (_is_channels_service() or rs.received_channels_channel) then
+//      if (_is_channels_service() or rs.received_channels_channel) then
+      if rs.received_channels_channel then
         init()
-        reactor_state().is_initialized = true
+        rs.is_initialized = true
       else
         // Try again after other messages in the queue are processed.
         _wrapped_init()

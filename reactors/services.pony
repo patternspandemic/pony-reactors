@@ -139,8 +139,7 @@ actor Channels is (Service & Reactor[ChannelsEvent])
     if _channel_map.contains(key) then
       // A channel or reservation is already mapped. Deny the requested reserve.
       ev_reserve.reply_channel << None
-end
-/*    else
+    else
       // The mapping is available.
       let reservation = ChannelReservation(key)
       // Map the key to the reservation until a ChannelRegister event attempts
@@ -149,8 +148,48 @@ end
       // Reply with the reservation
       ev_reserve.reply_channel << reservation
     end
-*/
+
+  be _channels_pre_init() =>
+    // match _system
+    // | let system: ReactorSystem tag =>
+    //   // Propogate the main channel to the system for spread to all reactors.
+    //   system._receive_channels_service(main().channel)
+    //   // Add this to the system's services
+    //   system._receive_service(this)
+    // end
+
+    // // Register the main channel in the named channel map as well.
+    // _channel_map(("channels", "main")) = main().channel
+
+//    main().events.on({ref 
+//      () => Debug.out("Hmmm")
+//    })
+//    main().events.on({ref 
+//      () => Debug.out("Huh")
+//    })
+    main().events.on_event({ref
+      (event: ChannelsEvent, hint: OptionalEventHint)(self = this) =>
+        match event
+        | let ev_reserve: ChannelReserve =>
+//          pa_reserve_channel(ev_reserve)
+          self._reserve_channel(ev_reserve)
+        | let ev_register: ChannelRegister => None //register_channel(register)
+        | let ev_get: ChannelGet[(Any val | Any tag)] => None //get_channel(get)
+        | let ev_await: ChannelAwait[(Any val | Any tag)] => None //await_channel(await)
+        // | let get: ChannelGet[Any val] => None //get_channel(get)
+        // | let await: ChannelAwait[Any val] => None //await_channel
+        end
+    })
+
+    // TODO: Add reservations for lazily init'd core services.
+    // _wrapped_init()
+    init()
+
   fun ref init() =>
+    // main().events.on({ref 
+    //   () => Debug.out("Hmmm")
+    // })
+
     match _system
     | let system: ReactorSystem tag =>
       // Propogate the main channel to the system for spread to all reactors.
@@ -168,11 +207,15 @@ end
     //  - Then will likely need to reply through the event itself, only it knows chan type?
     // i.e. get.reply(_channel_map((get.reactor_name,get.channel_name))?) which will cast subtype to `E`
     // TODO: Channels event handling - delegate to funs
-    let pa_reserve_channel = this~_reserve_channel()
+/*    let pa_reserve_channel = this~_reserve_channel()
     main().events.on_event({ref
-      (event: ChannelsEvent, hint: OptionalEventHint) =>
+      (event: ChannelsEvent, hint: OptionalEventHint)(self = this) =>
+        Debug.out("Channels received an event...")
         match event
-        | let ev_reserve: ChannelReserve => pa_reserve_channel(ev_reserve)
+        | let ev_reserve: ChannelReserve =>
+          Debug.out("Channels << ChannelReserve event")
+//          pa_reserve_channel(ev_reserve)
+          self._reserve_channel(ev_reserve)
         | let ev_register: ChannelRegister => None //register_channel(register)
         | let ev_get: ChannelGet[(Any val | Any tag)] => None //get_channel(get)
         | let ev_await: ChannelAwait[(Any val | Any tag)] => None //await_channel(await)
@@ -180,14 +223,14 @@ end
         // | let await: ChannelAwait[Any val] => None //await_channel
         end
     })
+*/
+    reactor_state().is_initialized = true
 
   be shutdown() =>
     // Send shutdown to core services needed?
     _system = None
     _channel_map.clear()
     _await_map.clear()
-
-
 
 /*
 // Services:

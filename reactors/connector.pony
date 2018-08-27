@@ -1,3 +1,4 @@
+use "debug"
 
 interface ConnectorKind
 
@@ -38,6 +39,7 @@ class Connector[T: Any #share, S: Any #share] is ConnectorKind
   var reservation: (ChannelReservation | None)
   let events: Emitter[T] //Events[T] ref
 
+  // TODO: Connector.create - Handle reservations.
   // TODO: Connector.create - Provide default events?
   new create(
     channel': Channel[T] val,
