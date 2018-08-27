@@ -67,13 +67,7 @@ class ReactorState[T: Any #share]
     //- TODO: ReactorState - Setup any default event handling?
 
     // Ensure the reactor's init gets called
-//    reactor._wrapped_init()
-    if reactor._is_channels_service() then
-      // TODO: May be able to revert to single init for channels service.
-      reactor._channels_pre_init()
-    else
-      reactor._wrapped_init()
-    end
+    reactor._wrapped_init()
 
     // Add the reactor to the system's reactor set
     system._receive_reactor(reactor)
@@ -201,17 +195,12 @@ trait tag Reactor[E: Any #share] is ReactorKind
       """ Complete the reactor state's main_connector configuration. """
       main().set_reactor_state(reactor_state())
 
-    be _channels_pre_init() =>
-      """ Only to be overridden by the channels service reactor. """
-      None
-
     be _wrapped_init() =>
       """ Initialize the reactor after receiving the channels service channel. """
       let rs = reactor_state()
       // The Channels reactor need not wait for its own channel. Commence when
       // the channels channel is received.
-//      if (_is_channels_service() or rs.received_channels_channel) then
-      if rs.received_channels_channel then
+      if (_is_channels_service() or rs.received_channels_channel) then
         init()
         rs.is_initialized = true
       else

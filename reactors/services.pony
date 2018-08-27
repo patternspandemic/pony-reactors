@@ -142,7 +142,7 @@ actor Channels is (Service & Reactor[ChannelsEvent])
       ev_reserve.reply_channel << reservation
     end
 
-  be _channels_pre_init() =>
+  fun ref init() =>
     // FIXME: ? Replace (Any val | Any tag) w/subtype
     //  - Then will likely need to reply through the event itself, only it knows chan type?
     // i.e. get.reply(_channel_map((get.reactor_name,get.channel_name))?) which will cast subtype to `E`
@@ -174,8 +174,6 @@ actor Channels is (Service & Reactor[ChannelsEvent])
 
     // Channels service reactor is initialized
     reactor_state().is_initialized = true
-
-  fun ref init() => None
 
   be shutdown() =>
     // Send shutdown to core services needed?
