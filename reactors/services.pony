@@ -64,13 +64,16 @@ class val ChannelGet
     channel_name = channel_name'
 
 // Maybe can use Channel[ChannelKind] in place of Channel[E] to make work with Isolate version?
-class val ChannelAwait[E: Any #share]
+// class val ChannelAwait[E: Any #share]
+class val ChannelAwait
   """"""
   let reactor_name: String
   let channel_name: String
-  let reply_channel: Channel[Channel[E]] val
+  // let reply_channel: Channel[Channel[E]] val
+  let reply_channel: Channel[ChannelKind val] val
   new val create(
-    reply_channel': Channel[Channel[E]] val,
+    // reply_channel': Channel[Channel[E]] val,
+    reply_channel': Channel[ChannelKind val] val,
     reactor_name': String,
     channel_name': String = "main")
   =>
@@ -82,7 +85,7 @@ type ChannelsEvent is
   ( ChannelReserve
   | ChannelRegister
   | ChannelGet //[(Any val | Any tag)] // FIXME: ? Replace w/subtype
-  | ChannelAwait[(Any val | Any tag)] // FIXME: ? Replace w/subtype
+  | ChannelAwait //[(Any val | Any tag)] // FIXME: ? Replace w/subtype
   // | ChannelGet[Any val]
   // | ChannelAwait[Any val]
   )
@@ -112,8 +115,9 @@ actor Channels is (Service & Reactor[ChannelsEvent])
   // of reactors awaiting the named channel to be registered.
   let _await_map: MapIs[
     (String, String),
-    SetIs[Channel[(Any val | Any tag)] val]
+    // SetIs[Channel[(Any val | Any tag)] val]
     // SetIs[Channel[Any val] val]
+    SetIs[Channel[ChannelKind val] val]
   ]
 
   new create(system': ReactorSystem tag) =>
@@ -160,6 +164,8 @@ actor Channels is (Service & Reactor[ChannelsEvent])
             // Register if the reservations match.
             if reservation' is reservation then
               _channel_map(key) = (channel, reservation)
+              // Send the channel to reactors awaiting the channel.
+              _notify_awaiting(key, channel)
             end
           | (let ck: ChannelKind val, let cr: ChannelReservation val) =>
             // TODO: Channels._register_channel - Test channel replacement.
@@ -193,9 +199,53 @@ actor Channels is (Service & Reactor[ChannelsEvent])
       ev_get.reply_channel << None
     end
 
-  // TODO: Channels service - _await_channel
-  fun ref _await_channel(ev_await: ChannelAwait[(Any val | Any tag)]) =>
-    None
+  // TODO: Channels service - Test _await_channel
+  // fun ref _await_channel(ev_await: ChannelAwait[(Any val | Any tag)]) =>
+  fun ref _await_channel(ev_await: ChannelAwait) =>
+    let key = (ev_await.reactor_name, ev_await.channel_name)
+    if _channel_map.contains(key) then
+      // Requested channel is either registered or reserved.
+      try
+        match _channel_map(key)?
+        | (let channel: ChannelKind val, let _: ChannelReservation val) =>
+          // Requested channel is registered, send it back on reply_channel.
+          ev_await.reply_channel << channel
+        else
+          // Requested channel not registered. Await the channel.
+          _add_awaiting(key, ev_await.reply_channel)
+        end
+      end
+    else
+      // Requested channel not registered. Await the channel.
+      _add_awaiting(key, ev_await.reply_channel)
+    end
+
+  fun ref _add_awaiting(
+    key: (String, String),
+    reply_channel: Channel[ChannelKind val] val)
+  =>
+    // Initialize a waiting set of channels if needed.
+    if not _await_map.contains(key) then
+      _await_map(key) = SetIs[Channel[ChannelKind val] val]
+    end
+    // Add the reply_channel to the waiting set.
+    try
+      let awaiting_set = _await_map(key)?
+      awaiting_set.set(reply_channel)
+    end
+
+  fun ref _notify_awaiting(key: (String, String), channel: ChannelKind val) =>
+    if _await_map.contains(key) then
+      try
+        // Notify each awaiting channel of the requested channel.
+        let awaiting_set = _await_map(key)?
+        for awaiter in awaiting_set.values() do
+          awaiter << channel
+        end
+        // Remove the waiting set of channels after notifying.
+        _await_map.remove(key)?
+      end
+    end
 
   fun ref init() =>
     // FIXME: ? Replace (Any val | Any tag) w/subtype
@@ -211,7 +261,8 @@ actor Channels is (Service & Reactor[ChannelsEvent])
         // | let ev_get: ChannelGet[(Any val | Any tag)] =>
         | let ev_get: ChannelGet =>
           self._get_channel(ev_get)
-        | let ev_await: ChannelAwait[(Any val | Any tag)] =>
+        // | let ev_await: ChannelAwait[(Any val | Any tag)] =>
+        | let ev_await: ChannelAwait =>
           self._await_channel(ev_await)
         // | let get: ChannelGet[Any val] => None //get_channel(get)
         // | let await: ChannelAwait[Any val] => None //await_channel
