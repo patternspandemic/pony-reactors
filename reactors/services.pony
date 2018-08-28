@@ -46,13 +46,16 @@ class val ChannelRegister
     channel = channel'
 
 // Maybe can use Channel[ChannelKind] in place of Channel[E] to make work with Isolate version?
-class val ChannelGet[E: Any #share]
+// class val ChannelGet[E: Any #share]
+class val ChannelGet
   """"""
   let reactor_name: String
   let channel_name: String
-  let reply_channel: Channel[(Channel[E] | None)] val
+  // let reply_channel: Channel[(Channel[E] | None)] val
+  let reply_channel: Channel[(ChannelKind val | None)] val
   new val create(
-    reply_channel': Channel[(Channel[E] | None)] val,
+    // reply_channel': Channel[(Channel[E] | None)] val,
+    reply_channel': Channel[(ChannelKind val | None)] val,
     reactor_name': String,
     channel_name': String = "main")
   =>
@@ -78,7 +81,7 @@ class val ChannelAwait[E: Any #share]
 type ChannelsEvent is
   ( ChannelReserve
   | ChannelRegister
-  | ChannelGet[(Any val | Any tag)] // FIXME: ? Replace w/subtype
+  | ChannelGet //[(Any val | Any tag)] // FIXME: ? Replace w/subtype
   | ChannelAwait[(Any val | Any tag)] // FIXME: ? Replace w/subtype
   // | ChannelGet[Any val]
   // | ChannelAwait[Any val]
@@ -170,9 +173,25 @@ actor Channels is (Service & Reactor[ChannelsEvent])
     end
     // .. otherwise the reservation has expired and is ignored.
 
-  // TODO: Channels service - _get_channel
-  fun ref _get_channel(ev_get: ChannelGet[(Any val | Any tag)]) =>
-    None
+  // fun ref _get_channel(ev_get: ChannelGet[(Any val | Any tag)]) =>
+  fun ref _get_channel(ev_get: ChannelGet) =>
+    let key = (ev_get.reactor_name, ev_get.channel_name)
+    if _channel_map.contains(key) then
+      // Requested channel is either registered or reserved.
+      try
+        match _channel_map(key)?
+        | (let channel: ChannelKind val, let _: ChannelReservation val) =>
+          // Requested channel is registered, send it back on reply_channel.
+          ev_get.reply_channel << channel
+        else
+          // Requested channel not registered. Reply with `None`
+          ev_get.reply_channel << None
+        end
+      end
+    else
+      // Requested channel not registered. Reply with `None`
+      ev_get.reply_channel << None
+    end
 
   // TODO: Channels service - _await_channel
   fun ref _await_channel(ev_await: ChannelAwait[(Any val | Any tag)]) =>
@@ -189,7 +208,8 @@ actor Channels is (Service & Reactor[ChannelsEvent])
           self._reserve_channel(ev_reserve)
         | let ev_register: ChannelRegister =>
           self._register_channel(ev_register)
-        | let ev_get: ChannelGet[(Any val | Any tag)] =>
+        // | let ev_get: ChannelGet[(Any val | Any tag)] =>
+        | let ev_get: ChannelGet =>
           self._get_channel(ev_get)
         | let ev_await: ChannelAwait[(Any val | Any tag)] =>
           self._await_channel(ev_await)
