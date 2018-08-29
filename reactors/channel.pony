@@ -31,3 +31,9 @@ primitive BuildChannel
       // TODO: BuildChannel.dummy - Log error/warning when sent event.
       fun shl(event: T) => None
     end
+
+//////// REFERENCE CODE \\\\\\\\\
+/*
+type Req[T: Any #share, S: Any #share] is (T, Channel[S])
+type Server[T: Any #share, S: Any #share] is Channel[Req[T, S]]
+*/

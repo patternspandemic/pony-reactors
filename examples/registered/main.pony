@@ -36,16 +36,15 @@ actor Main is Reactor[None]
   fun ref reactor_state(): ReactorState[None] => _reactor_state
 
   fun ref init() =>
-    let conn = open[(ChannelReservation | None)]()
-    channels() << ChannelReserve(conn.channel, "welcomer")
-    conn.events.on_event({
-      (res: (ChannelReservation | None), hint: OptionalEventHint) =>
-        match res
-        | let cr: ChannelReservation =>
-          let welcomer = Welcomer(_system, _env.out, cr)
-          welcomer << "Reserved Ponylang"
-        | None =>
-          _env.out.print("Denied 'welcomer' reservation")
+    let connector = open[(ChannelReservation | None)]()
+    channels() << ChannelReserve(connector.channel, "welcomer")
+    connector.events.on_event({
+      (event: (ChannelReservation | None), hint: OptionalEventHint) =>
+        match event
+        | let reservation: ChannelReservation =>
+          let welcomer = Welcomer(_system, _env.out, reservation)
+          welcomer << "Ponylang"
+        | None => _env.out.print("Denied reservation.")
         end
-        conn.seal()
+        connector.seal()
     })
