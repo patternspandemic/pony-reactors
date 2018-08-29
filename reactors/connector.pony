@@ -53,6 +53,8 @@ class Connector[T: Any #share, S: Any #share] is ConnectorKind
   fun ref set_reactor_state(rs: ReactorState[S]) =>
     _reactor_state = rs
 
+  fun is_open(): Bool => not _is_sealed
+
   fun ref seal() =>
     if not _is_sealed then
       // Mark connector as sealed, and unreact its event stream.
@@ -62,6 +64,8 @@ class Connector[T: Any #share, S: Any #share] is ConnectorKind
       match _reactor_state
       | let rs: ReactorState[S] =>
         // Remove the connector from the owning reactor's collection.
+        // Note: This will not remove the main connector when it's sealed, as
+        //  it is indexed by the reactor and not its channel_tag.
         try rs.connectors.remove(channel.channel_tag())? end
         // If channel was registerd ask channels service to forget it.
         match reservation

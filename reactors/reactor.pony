@@ -76,7 +76,7 @@ class ReactorState[T: Any #share]
 
 interface tag ReactorKind
   // TODO: ReactorKind.name - Integrate with reserved name of a reactor?
-  fun tag name(): String
+  fun tag name(): String => "<Reactor Name>"
   be _supplant_channels_service(channels_channel: Channel[ChannelsEvent] val)
 
 
@@ -135,6 +135,7 @@ trait tag Reactor[E: Any #share] is ReactorKind
       """ The reactor's default channel sink. """
       _muxed_sink[E](this, consume event)
 
+    // Satisfy 'public access' to _muxed_sink for now.
     fun tag muxed_sink[T: Any #share](channel_tag: Any tag, event: T) =>
       _muxed_sink[T](channel_tag, event)
 
@@ -149,10 +150,16 @@ trait tag Reactor[E: Any #share] is ReactorKind
       This behavior acts as a router for all events sent to the reactor,
       ensuring they make their way to the channel's corresponding emitter.
       """
+      // Ensure the reactor is ready to process channeled events.
       if reactor_state().is_initialized then
         try
+          // Attempt to match the channel_tag to a corresponding connector.
           let conn = reactor_state().connectors(channel_tag)? as Connector[T, E]
-          conn.events.react(event)
+          // If the connector is not sealed..
+          if conn.is_open() then
+            // ..send the event on for processing by the corresponding event stream.
+            conn.events.react(event)
+          end
         else
           // TODO: Reactor._muxed_sink - log no connector match
           None

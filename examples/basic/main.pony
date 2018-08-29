@@ -1,4 +1,3 @@
-use "debug"
 use "../../reactors"
 
 
@@ -8,51 +7,23 @@ actor Welcomer is Reactor[String]
 
   new create(
     system: ReactorSystem,
-    reservation: (ChannelReservation | None) = None,
     out: OutStream)
   =>
-    _reactor_state = ReactorState[String](this, system, reservation)
+    _reactor_state = ReactorState[String](this, system)
     _out = out
 
-  fun tag name(): String => "Welcomer"
   fun ref reactor_state(): ReactorState[String] => _reactor_state
 
   fun ref init() =>
     main().events.on_event({
       (name: String, hint: OptionalEventHint)(self = this) =>
         _out.print("Welcome " + name + "!")
+        self.main().seal()
     })
 
 
-actor Main is Reactor[None]
-  let env: Env
-  let system: ReactorSystem
-  let _reactor_state: ReactorState[None]
-
-  new create(env': Env) =>
-    env = env'
-    system = ReactorSystem
-    _reactor_state = ReactorState[None](this, system)
-
-  fun tag name(): String => "Main"
-  fun ref reactor_state(): ReactorState[None] => _reactor_state
-
-  fun ref init() =>
-    /* Non-registered Welcomer */
-    let welcomer = Welcomer(system, None, env.out)
+actor Main
+  new create(env: Env) =>
+    let system = ReactorSystem
+    let welcomer = Welcomer(system, env.out)
     welcomer << "Ponylang"
-
-    /* Registered Welcomer */
-    let conn = open[(ChannelReservation | None)]()
-    channels() << ChannelReserve(conn.channel, "welcomer")
-    conn.events.on_event({
-      (res: (ChannelReservation | None), hint: OptionalEventHint) =>
-        match res
-        | let cr: ChannelReservation =>
-          let welcomer = Welcomer(system, cr, env.out)
-          welcomer << "Reserved Ponylang"
-        | None =>
-          env.out.print("Denied 'welcomer' reservation")
-        end
-        conn.seal()
-    })
