@@ -100,7 +100,7 @@ actor Main is TestList
 
     /* Signal Tests */
     test(_TestSignalConst)
-    test(_TestSignalMutable)
+    test(_TestSignalMutate1)
     test(_TestSignalAggregate)
     test(_TestSignalChanges)
     test(_TestSignalIs)

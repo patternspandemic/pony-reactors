@@ -183,7 +183,7 @@ class _After[T: Any #alias, S: Any #alias] is Events[T]
     BuildSubscription.composite([sub; sub_that])
 
 
-class Emitter[T: Any #alias] is (Push[T] & Events[T] & Observer[T])
+class Emitter[T: Any #alias] is (Push[T] & Observer[T])
   """
   An event source that emits events when `react`, `except`, or `unreact` is called. Emitters are simultaneously an event stream and observer.
   """
@@ -214,7 +214,7 @@ class Emitter[T: Any #alias] is (Push[T] & Events[T] & Observer[T])
 
 // TODO: Mutable - Try to make this safer by requiring the mutator replace content with val versions, makeing the only way to easily update the signal to go through the mutate observer protocol. So instead of allowing content to be directly mutable (ref), allow it to be (val) replaced by the mutator.
 // TODO: Mutable - Fill out docstring
-class Mutable[M: Any ref] is (Push[M] & Events[M])
+class Mutable[M: Any ref] is (Push[M] & Signal[M])
   """
   An event stream that emits an underlying mutable object as its event values
   when that underlying mutable object is potentially modified. This is a type of
@@ -233,7 +233,13 @@ class Mutable[M: Any ref] is (Push[M] & Events[M])
   new create(content': M) =>
     content = content'
 
-  // Implemented state accessors
+  // Implement Signal
+  fun ref apply(): M => content
+  fun is_empty(): Bool => false
+  fun _is_unsubscribed(): Bool => false
+  fun ref unsubscribe() => None
+
+  // Implement Push
   fun ref get_observers(): SetIs[Observer[M]] => _observers
   fun _get_events_unreacted(): Bool => _events_unreacted
   fun ref _set_events_unreacted(value: Bool) => _events_unreacted = value
