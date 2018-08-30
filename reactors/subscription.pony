@@ -33,19 +33,19 @@ class Composite is Subscription
   A subscription composed of several subscriptions. When unsubscribed, all
   component subscriptions get unsubscribed.
   """
-  let subscriptions: Array[Subscription]
-  var unsubscribed: Bool = false
+  let _subscriptions: Array[Subscription]
+  var _unsubscribed: Bool = false
 
-  new create(subscriptions': Array[Subscription]) =>
-    subscriptions = subscriptions'
+  new create(subscriptions: Array[Subscription]) =>
+    _subscriptions = subscriptions
 
   fun _is_unsubscribed(): Bool =>
-    unsubscribed
+    _unsubscribed
 
   fun ref unsubscribe() =>
-    for s in subscriptions.values() do
+    for s in _subscriptions.values() do
       s.unsubscribe()
-      unsubscribed = true
+      _unsubscribed = true
     end
 
 
@@ -61,14 +61,14 @@ primitive BuildSubscription
     unsubscribed. The action will not be run more than once.
     """
     object is Subscription
-      var unsubscribed: Bool = false
+      var _unsubscribed: Bool = false
 
       fun _is_unsubscribed(): Bool =>
-        unsubscribed
+        _unsubscribed
 
       fun ref unsubscribe() =>
-        if not unsubscribed then
-          unsubscribed = true
+        if not _unsubscribed then
+          _unsubscribed = true
           unsubscribe_action()
         end
     end
@@ -80,9 +80,9 @@ primitive BuildSubscription
       fun _is_unsubscribed(): Bool => true
     end
 
-  fun composite(subscriptions': Array[Subscription]): Subscription =>
+  fun composite(subscriptions: Array[Subscription]): Subscription =>
     """ A subscription composed of many subscriptions. """
-    Composite(subscriptions')
+    Composite(subscriptions)
 
 // TODO: Subscription Implementations
 //  Proxy (trait for a thing that defers to a subscription it has)

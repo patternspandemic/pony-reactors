@@ -70,13 +70,36 @@ class iso _TestSubscription is UnitTest
 
 
 class iso _TestSubscriptionEmpty is UnitTest
-  fun name():String => "NI/subscription/empty"
-  fun ref apply(h: TestHelper) => h.fail("not implemented")
+  fun name():String => "subscription/empty"
+
+  fun ref apply(h: TestHelper) =>
+    let s = BuildSubscription.empty()
+    h.assert_true(
+      s._is_unsubscribed(),
+      "Empty subscription should be unsubscribed by default.")
 
 
 class iso _TestSubscriptionComposite is UnitTest
-  fun name():String => "NI/subscription/composite"
-  fun ref apply(h: TestHelper) => h.fail("not implemented")
+  fun name():String => "subscription/composite"
+
+  fun ref apply(h: TestHelper) =>
+    h.expect_action("unsubscribe A")
+    h.expect_action("unsubscribe B")
+    let sub_a: Subscription = BuildSubscription(
+      where
+        unsubscribe_action = {ref
+          () => h.complete_action("unsubscribe A")
+        }
+    )
+    let sub_b: Subscription = BuildSubscription(
+      where
+        unsubscribe_action = {ref
+          () => h.complete_action("unsubscribe B")
+        }
+    )
+    let composite: Subscription =
+      BuildSubscription.composite([sub_a; sub_b])
+    composite.unsubscribe()
 
 
 class iso _TestSubscriptionProxy is UnitTest
