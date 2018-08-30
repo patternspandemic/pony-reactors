@@ -229,6 +229,8 @@ class Mutable[M: Any ref] is (Push[M] & Signal[M])
   var _events_unreacted: Bool = false
   // Underlying Mutable state
   var content: M ref
+  // Subscription state
+  var _unsubscribed: Bool = false
 
   new create(content': M) =>
     content = content'
@@ -236,8 +238,12 @@ class Mutable[M: Any ref] is (Push[M] & Signal[M])
   // Implement Signal
   fun ref apply(): M => content
   fun is_empty(): Bool => false
-  fun _is_unsubscribed(): Bool => false
-  fun ref unsubscribe() => None
+  fun _is_unsubscribed(): Bool => _unsubscribed
+  fun ref unsubscribe() =>
+    _unsubscribed = true
+    if not _get_events_unreacted() then
+      unreact_all()
+    end
 
   // Implement Push
   fun ref get_observers(): SetIs[Observer[M]] => _observers

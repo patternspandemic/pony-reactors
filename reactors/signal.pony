@@ -18,11 +18,11 @@ trait Signal[T: Any #alias] is (Events[T] & Subscription)
   /* TODO: Signal methods
   changes
   is
-  becomes
+  becomes (requires changes, Events.filter)
   diff_past
   zip
   sync_with
-  past_2
+  past_2 (requires Events.scan_past)
   with_subscription
   */
 
