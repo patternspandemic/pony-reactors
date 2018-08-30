@@ -97,3 +97,16 @@ actor Main is TestList
     test(_TestEventsUnreacted)
     test(_TestEventsUntil)
     test(_TestEventsZipHint)
+
+    /* Signal Tests */
+    test(_TestSignalConst)
+    test(_TestSignalMutable)
+    test(_TestSignalAggregate)
+    test(_TestSignalChanges)
+    test(_TestSignalIs)
+    test(_TestSignalBecomes)
+    test(_TestSignalDiffPast)
+    test(_TestSignalZip)
+    test(_TestSignalSyncWith)
+    test(_TestSignalPast2)
+    test(_TestSignalWithSubscription)
