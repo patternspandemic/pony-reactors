@@ -97,6 +97,28 @@ trait Events[T: Any #alias]
     let o: Observer[T] = BuildObserver[T].that_mutates[C](mutable, mutator)
     on_reaction(o)
 
+  // TODO: Events.to_*signal docstrings
+  fun ref to_empty_signal(): Signal[T] =>
+    """"""
+    _ToSignal[T](this).>_supplant_raw_subscription()
+
+  fun ref to_eager_signal(): Signal[T] =>
+    """"""
+    _ToSignal[T](this, true).>_supplant_raw_subscription()
+
+  fun ref to_signal(initial: T): Signal[T] =>
+    """"""
+    _ToSignal[T](this, true, initial).>_supplant_raw_subscription()
+/*
+  fun ref to_cold_signal(initial: T): Signal[T] =>
+    """"""
+    _ToColdSignal[T](this, initial)._supplant_raw_subscription()
+
+  fun ref to_done_signal(): Signal[Bool] =>
+    """"""
+    done().map[Bool]({() => true}).to_signal(false)
+*/
+
 
 // TODO: Push
 // - Possibility of having references to observers that are no longer reachable?
@@ -258,6 +280,95 @@ class Never[T: Any #alias] is Events[T]
   fun ref on_reaction(observer: Observer[T]): Subscription =>
     observer.unreact()
     BuildSubscription.empty()
+
+
+class _PushSource[T: Any #alias] is Push[T]
+  """ The Push implemetation actualized. """
+  // Push state
+  var _observers: SetIs[Observer[T]] = SetIs[Observer[T]]
+  var _events_unreacted: Bool = false
+
+  // Implemented state accessors
+  fun ref get_observers(): SetIs[Observer[T]] => _observers
+  fun _get_events_unreacted(): Bool => _events_unreacted
+  fun ref _set_events_unreacted(value: Bool) => _events_unreacted = value
+
+
+primitive \nosupertype\ _EmptySignal
+
+class _ToSignal[T: Any #alias] is (Signal[T] & Observer[T] & SubscriptionProxy)
+  """"""
+  let _self: Events[T]
+  var _eager: Bool
+  var _cached: (T | _EmptySignal)
+  let _push_source: _PushSource[T] = _PushSource[T]
+  var _raw_subscription: Subscription
+  var _events_unreacted: Bool = false
+
+  new create(
+    self: Events[T],
+    eager: Bool = false,
+    cached: (T | _EmptySignal) = _EmptySignal)
+  =>
+    _self = self
+    _eager = eager
+    _cached = cached
+    _raw_subscription = BuildSubscription.empty()
+
+  fun ref _supplant_raw_subscription() =>
+    _raw_subscription = _self.on_reaction(this)
+
+  fun ref on_reaction(observer: Observer[T]): Subscription =>
+    if _events_unreacted then
+      // This signal is no longer propogating events. Immediately unreact
+      // the observer, and return an empty subscription.
+      observer.unreact()
+      BuildSubscription.empty()
+    else
+      // TODO: _ToSignal - Test eagerness around _EmptySignal
+      if _eager then
+      // React on subscription, but only when signal is not empty.
+        match _cached
+        // | _EmptySignal => None
+        | let value: T => observer.react(value, None)
+        end
+      end
+      _push_source.on_reaction(observer)
+    end
+
+  // Signal ...
+  fun ref apply(): T? =>
+    match _cached
+    | _EmptySignal => error
+    | let value: T => value
+    end
+
+  fun is_empty(): Bool => _cached is _EmptySignal
+
+  // Observer ...
+  fun ref react(value: T, hint: (EventHint | None) = None) =>
+    if not _events_unreacted then
+      _cached = value
+      _push_source.react_all(value, hint)
+    end
+
+  fun ref except(x: EventError) =>
+    if not _events_unreacted then
+      _push_source.except_all(x)
+    end
+
+  fun ref unreact() =>
+    if not _events_unreacted then
+      _events_unreacted = true
+      _push_source.unreact_all()
+    end
+
+  // SubscriptionProxy ...
+  fun _is_unsubscribed(): Bool =>
+    _raw_subscription._is_unsubscribed()
+
+  fun ref proxy_subscription(): Subscription =>
+    _raw_subscription
 
 
 // TODO: BuildEvents docstring

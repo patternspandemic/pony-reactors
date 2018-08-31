@@ -5,7 +5,7 @@ trait Signal[T: Any #alias] is (Events[T] & Subscription)
   """
 
   // TODO: Signal.apply - Improve safety by returning box? See also Mutable todo
-  fun ref apply(): T
+  fun ref apply(): T?
     """ Returns the signal's value, the last event produced by this signal. """
 
   fun is_empty(): Bool

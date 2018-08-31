@@ -28,6 +28,16 @@ trait Subscription
     })
 
 
+trait SubscriptionProxy is Subscription
+  """ Forwards `unsubscribe` to another subscription. """
+  fun ref proxy_subscription(): Subscription
+    """ The subscription this is proxy to. """
+
+  fun ref unsubscribe() =>
+    """ Unsubscribing this proxy unsubscribes the proxied. """
+    proxy_subscription().unsubscribe()
+
+
 class Composite is Subscription
   """
   A subscription composed of several subscriptions. When unsubscribed, all
