@@ -12,7 +12,7 @@ primitive _OtherTestEventError is EventError
 // TODO: _TestEventsEmitter? Its functionality tested through other event tests.
 // TODO: _TestEventsMutable? Its functionality tested through mutate eventtests.
 
-class _TestEmitter[T: Any #alias] is (Push[T] & Events[T] & Observer[T])
+class _TestEmitter[T: Any #alias] is (Push[T] & Observer[T])
   let _emitter: Emitter[T] = BuildEvents.emitter[T]()
   var unsubscription_count: U32 = 0
 
@@ -636,24 +636,96 @@ class iso _TestEventsTakeWhile is UnitTest
   fun ref apply(h: TestHelper) => h.fail("not implemented")
 
 
-class iso _TestEventsToCold is UnitTest
-  fun name():String => "NI/events/ToCold"
+class iso _TestEventsToColdSignal is UnitTest
+  fun name():String => "NI/events/to_cold_signal/basic"
+  fun ref apply(h: TestHelper) => h.fail("not implemented")
+
+
+class iso _TestEventsToColdSignalUnsubscribesWithNoObservers is UnitTest
+  fun name():String => "NI/events/to_cold_signal/unsubscribes with no observers"
+  fun ref apply(h: TestHelper) => h.fail("not implemented")
+
+
+class iso _TestEventsToColdSignalUnreactsWhenDone is UnitTest
+  fun name():String => "NI/events/to_cold_signal/unreacts when done"
+  fun ref apply(h: TestHelper) => h.fail("not implemented")
+
+
+class iso _TestEventsToColdSignalUsedWithZipRemovesSubscriptions is UnitTest
+  fun name():String =>
+    "NI/events/to_cold_signal/used with zip removes subscriptions"
   fun ref apply(h: TestHelper) => h.fail("not implemented")
 
 
 class iso _TestEventsToDoneSignal is UnitTest
-  fun name():String => "NI/events/ToDoneSignal"
+  fun name():String => "NI/events/to_done_signal"
   fun ref apply(h: TestHelper) => h.fail("not implemented")
 
 
-class iso _TestEventsToEager is UnitTest
-  fun name():String => "NI/events/ToEager"
-  fun ref apply(h: TestHelper) => h.fail("not implemented")
+class iso _TestEventsToEagerSignal is UnitTest
+  var reacted: Bool = false
+
+  fun name():String => "events/to_eager_signal"
+
+  fun ref apply(h: TestHelper) =>
+    let self = this
+    let emitter = BuildEvents.emitter[USize]()
+    let signal = emitter.to_eager_signal()
+    // Signal should not react new observers when empty.
+    h.assert_true(signal.is_empty(), "signal should be empty")
+    var sub = signal.on(
+      where
+        react_handler = {
+          () => self.reacted = true
+        }
+    )
+    h.assert_false(
+      reacted, "eager signal should not react new observer when empty")
+    sub.unsubscribe()
+    // Signal should cache value on reaction.
+    emitter.react(7)
+    try h.assert_eq[USize](7, signal()?)
+    else h.fail("signal should not be empty") end
+    // Signal should react new observers when caching value.
+    sub = signal.on(
+      where
+        react_handler = {
+          () => self.reacted = true
+        }
+    )
+    h.assert_true(
+      reacted, "eager signal should react new observer when caching value")
+    // Signal should hold last cached value after unsubscribe.
+    signal.unsubscribe()
+    emitter.react(11) // ..and ignore further event propogation.
+    try h.assert_eq[USize](
+      7, signal()?,
+      "signal's value changed after unsubscribe")
+    else h.fail("signal should not be empty") end
 
 
-class iso _TestEventsToEmpty is UnitTest
-  fun name():String => "NI/events/ToEmpty"
-  fun ref apply(h: TestHelper) => h.fail("not implemented")
+class iso _TestEventsToEmptySignal is UnitTest
+  fun name():String => "events/to_empty_signal"
+
+  fun ref apply(h: TestHelper) =>
+    let emitter = BuildEvents.emitter[USize]()
+    let signal = emitter.to_empty_signal()
+    // Signal should error with empty value.
+    try
+      signal()?
+      h.fail("signal should error when accessing empty value")
+    else None end
+    // Signal should cache value on reaction.
+    emitter.react(7)
+    try h.assert_eq[USize](7, signal()?)
+    else h.fail("signal should not be empty") end
+    // Signal should hold last cached value after unsubscribe.
+    signal.unsubscribe()
+    emitter.react(11) // ..and ignore further event propogation.
+    try h.assert_eq[USize](
+      7, signal()?,
+      "signal's value changed after unsubscribe")
+    else h.fail("signal should not be empty") end
 
 
 class iso _TestEventsToEventBuffer is UnitTest
@@ -672,8 +744,45 @@ class iso _TestEventsToRCell is UnitTest
 
 
 class iso _TestEventsToSignal is UnitTest
-  fun name():String => "NI/events/ToSignal"
-  fun ref apply(h: TestHelper) => h.fail("not implemented")
+  fun name():String => "events/to_signal/basic"
+
+  fun ref apply(h: TestHelper) =>
+    let emitter = BuildEvents.emitter[USize]()
+    let signal = emitter.to_signal(1)
+    // Signal should hold initial value.
+    try h.assert_eq[USize](1, signal()?)
+    else h.fail("signal should not be empty") end
+    // Signal should cache value on reaction.
+    emitter.react(7)
+    try h.assert_eq[USize](7, signal()?)
+    else h.fail("signal should not be empty") end
+    // Signal should hold last cached value after unsubscribe.
+    signal.unsubscribe()
+    emitter.react(11) // ..and ignore further event propogation.
+    try h.assert_eq[USize](
+      7, signal()?,
+      "signal's value changed after unsubscribe")
+    else h.fail("signal should not be empty") end
+
+
+class iso _TestEventsToSignalUnreactsWhenDone is UnitTest
+  var unreacted: Bool = false
+
+  fun name():String => "events/to_signal/unreacts when done"
+
+  fun ref apply(h: TestHelper) =>
+    let self = this
+    let emitter: _TestEmitter[USize] ref = _TestEmitter[USize]
+    let signal = emitter.to_signal(7)
+    emitter.unreact()
+    signal.on_done(
+      where
+        unreact_handler = {
+          () => self.unreacted = true
+        }
+    )
+    h.assert_true(unreacted)
+    h.assert_false(emitter.has_subscriptions())
 
 
 class iso _TestEventsUnionStreams is UnitTest

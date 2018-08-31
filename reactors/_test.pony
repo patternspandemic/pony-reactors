@@ -32,15 +32,11 @@ actor Main is TestList
     test(_TestEventsOnDone)
     test(_TestEventsOnDoneUnsubscribe)
     test(_TestEventsOnExcept)
-
     /* - combinators */
-
-      // After
-      test(_TestEventsAfter)
-      test(_TestEventsAfterUnreactsWithThis)
-      test(_TestEventsAfterUnreactsWithThat)
-      test(_TestEventsAfterUnsubscribesThat)
-
+    test(_TestEventsAfter)
+    test(_TestEventsAfterUnreactsWithThis)
+    test(_TestEventsAfterUnreactsWithThat)
+    test(_TestEventsAfterUnsubscribesThat)
     test(_TestEventsBatch)
     test(_TestEventsChanged)
     test(_TestEventsCollect)
@@ -83,14 +79,18 @@ actor Main is TestList
     test(_TestEventsTail)
     test(_TestEventsTake)
     test(_TestEventsTakeWhile)
-    test(_TestEventsToCold)
+    test(_TestEventsToColdSignal)
+    test(_TestEventsToColdSignalUnsubscribesWithNoObservers)
+    test(_TestEventsToColdSignalUnreactsWhenDone)
+    test(_TestEventsToColdSignalUsedWithZipRemovesSubscriptions)
     test(_TestEventsToDoneSignal)
-    test(_TestEventsToEager)
-    test(_TestEventsToEmpty)
+    test(_TestEventsToEagerSignal)
+    test(_TestEventsToEmptySignal)
     test(_TestEventsToEventBuffer)
     test(_TestEventsToIVar)
     test(_TestEventsToRCell)
     test(_TestEventsToSignal)
+    test(_TestEventsToSignalUnreactsWhenDone)
     test(_TestEventsUnionStreams)
     test(_TestEventsUnion)
     // test(_TestEventsUnliftTry) // Scala specific
