@@ -73,6 +73,41 @@ class _AfterThatObserver[T: Any #alias, S: Any #alias] is Observer[T]
     end
 
 
+class _ToColdSelfObserver[T: Any #alias] is Observer[T]
+  """ Helper observer for `_ToColdSignal` event streams. """
+  let _signal: _ToColdSignal[T]
+
+  new create(signal: _ToColdSignal[T]) =>
+    _signal = signal
+
+  fun ref react(value: T, hint: (EventHint | None) = None) =>
+    _signal.push_source.react_all(value, hint)
+  fun ref except(x: EventError) => _signal.push_source.except_all(x)
+  fun ref unreact() => _signal.push_source.unreact_all()
+
+
+class _ToColdSignalObserver[T: Any #alias] is Observer[T]
+  """ Helper observer for `_ToColdSignal` event streams. """
+  let _target: Observer[T]
+  let _signal: _ToColdSignal[T]
+  var done: Bool = false
+
+  new create(target: Observer[T], signal: _ToColdSignal[T]) =>
+    _target = target
+    _signal = signal
+
+  fun ref react(value: T, hint: (EventHint | None) = None) =>
+    _signal.cached = value
+    _target.react(value, hint)
+
+  fun ref except(x: EventError) => _target.except(x)
+
+  fun ref unreact() =>
+    done = true
+    _signal.check_unsubscribe()
+    _target.unreact()
+
+
 primitive BuildObserver[T: Any #alias]
   """ Observer Builder  """
   
@@ -176,3 +211,13 @@ primitive BuildObserver[T: Any #alias]
         mutable'.react_all(mutable'.content, None)
       fun ref except(x: EventError) => mutable'.except_all(x)
     end
+
+  fun _to_cold_self(signal: _ToColdSignal[T]): _ToColdSelfObserver[T] =>
+    _ToColdSelfObserver[T](signal)
+
+  fun _to_cold_signal(
+    target: Observer[T],
+    signal: _ToColdSignal[T])
+    : _ToColdSignalObserver[T]
+  =>
+    _ToColdSignalObserver[T](target, signal)

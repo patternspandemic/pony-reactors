@@ -109,11 +109,11 @@ trait Events[T: Any #alias]
   fun ref to_signal(initial: T): Signal[T] =>
     """"""
     _ToSignal[T](this, true, initial).>_supplant_raw_subscription()
-/*
+
   fun ref to_cold_signal(initial: T): Signal[T] =>
     """"""
-    _ToColdSignal[T](this, initial)._supplant_raw_subscription()
-
+    _ToColdSignal[T](this, initial)
+/*
   fun ref to_done_signal(): Signal[Bool] =>
     """"""
     done().map[Bool]({() => true}).to_signal(false)
@@ -369,6 +369,51 @@ class _ToSignal[T: Any #alias] is (Signal[T] & Observer[T] & SubscriptionProxy)
 
   fun ref proxy_subscription(): Subscription =>
     _raw_subscription
+
+
+// TODO: _ToColdSignal - Make work with empty value?
+class _ToColdSignal[T: Any #alias] is Signal[T]
+  """"""
+  let _self: Events[T]
+  var cached: T
+  var _self_subscription: (Subscription | None) = None
+  let _subscriptions: SubscriptionCollection = SubscriptionCollection
+  let push_source: _PushSource[T] = _PushSource[T]
+
+  new create(self: Events[T], cached': T) =>
+    _self = self
+    cached = cached'
+
+  fun ref on_reaction(target: Observer[T]): Subscription =>
+    let obs = BuildObserver[T]._to_cold_signal(target, this)
+    let sub = push_source.on_reaction(obs)
+    if not obs.done then
+      if _subscriptions.is_empty() then
+        _self_subscription =
+          _self.on_reaction(BuildObserver[T]._to_cold_self(this))
+      end
+      let saved_sub = _subscriptions.add_and_get(sub)
+      saved_sub.and_then(this~check_unsubscribe())
+    else
+      BuildSubscription.empty()
+    end
+
+  fun ref check_unsubscribe() =>
+    if _subscriptions.is_empty() then
+      match _self_subscription
+      | let sub: Subscription =>
+        sub.unsubscribe()
+        _self_subscription = None
+      end
+    end
+
+  // Signal ...
+  fun ref apply(): T => cached
+  fun is_empty(): Bool => false
+
+  // Subscription ...
+  fun _is_unsubscribed(): Bool => false
+  fun ref unsubscribe() => None
 
 
 // TODO: BuildEvents docstring
