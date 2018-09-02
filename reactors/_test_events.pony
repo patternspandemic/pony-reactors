@@ -637,18 +637,126 @@ class iso _TestEventsTakeWhile is UnitTest
 
 
 class iso _TestEventsToColdSignal is UnitTest
-  fun name():String => "NI/events/to_cold_signal/basic"
-  fun ref apply(h: TestHelper) => h.fail("not implemented")
+  var last: USize = 0
+
+  fun name():String => "events/to_cold_signal/basic"
+
+  fun ref apply(h: TestHelper) =>
+    let self = this
+    let emitter = BuildEvents.emitter[USize]()
+    let signal = emitter.to_cold_signal(1)
+    // Signal should hold initial value.
+    try h.assert_eq[USize](1, signal()?, "signal should hold initial value") end
+    // Cold signal should not change without observers
+    emitter.react(7)
+    try h.assert_eq[USize](
+      1, signal()?,
+      "cold signal value should not change without observers")
+    end
+    // Cold signal should change and react with observers
+    var sub = signal.on_event(
+      where
+        react_handler = {
+          (value: USize, hint: (EventHint | None) = None) =>
+            self.last = value
+        }
+    )
+    emitter.react(11)
+    try h.assert_eq[USize](
+      11, signal()?,
+      "cold signal with observers should change when its event stream reacts")
+    end
+    h.assert_eq[USize](11, last, "observer not reacted to signal change")
+    // Cold signal should not change without observers
+    sub.unsubscribe()
+    emitter.react(17)
+    try h.assert_eq[USize](
+      11, signal()?,
+      "cold signal value should not change without observers")
+    end
+    h.assert_eq[USize](11, last, "observer reacted after unsubscribe")
+    // Cold signal should change and react with observers again
+    sub = signal.on_event(
+      where
+        react_handler = {
+          (value: USize, hint: (EventHint | None) = None) =>
+            self.last = value
+        }
+    )
+    emitter.react(19)
+    try h.assert_eq[USize](
+      19, signal()?,
+      "cold signal with observers should change when its event stream reacts")
+    end
+    h.assert_eq[USize](19, last, "observer not reacted to signal change")
 
 
 class iso _TestEventsToColdSignalUnsubscribesWithNoObservers is UnitTest
-  fun name():String => "NI/events/to_cold_signal/unsubscribes with no observers"
-  fun ref apply(h: TestHelper) => h.fail("not implemented")
+  var last: USize = 0
+
+  fun name():String => "events/to_cold_signal/unsubscribes with no observers"
+
+  fun ref apply(h: TestHelper) =>
+    let self = this
+    let emitter: _TestEmitter[USize] ref = _TestEmitter[USize]
+    let signal = emitter.to_cold_signal(7)
+    // Cold signal should unsubscribe when all observers unsubscribe
+    let sub1 = signal.on_event(
+      where
+        react_handler = {
+          (value: USize, hint: (EventHint | None) = None) =>
+            self.last = value
+        }
+    )
+    emitter.react(11)
+    h.assert_eq[USize](11, last, "observer not reacted to signal change")
+    sub1.unsubscribe()
+    h.assert_eq[U32](1, emitter.unsubscription_count)
+    // Cold signal should unsubscribe when ONLY all observers unsubscribe
+    let sub2 = signal.on_event(
+      where
+        react_handler = {
+          (value: USize, hint: (EventHint | None) = None) =>
+            self.last = value
+        }
+    )
+    let sub3 = signal.on_event(
+      where
+        react_handler = {
+          (value: USize, hint: (EventHint | None) = None) =>
+            self.last = value
+        }
+    )
+    sub2.unsubscribe()
+    h.assert_eq[U32](1, emitter.unsubscription_count)
+    sub3.unsubscribe()
+    h.assert_eq[U32](2, emitter.unsubscription_count)
 
 
 class iso _TestEventsToColdSignalUnreactsWhenDone is UnitTest
-  fun name():String => "NI/events/to_cold_signal/unreacts when done"
-  fun ref apply(h: TestHelper) => h.fail("not implemented")
+  var done: Bool = false
+
+  fun name():String => "events/to_cold_signal/unreacts when done"
+
+  fun ref apply(h: TestHelper) =>
+    let self = this
+    let emitter: _TestEmitter[USize] ref = _TestEmitter[USize]
+    let signal = emitter.to_cold_signal(7)
+    // Cold signal should unsubscribe when unreacted.
+    h.assert_false(emitter.has_subscriptions())
+    signal.on({() => None})
+    h.assert_true(emitter.has_subscriptions())
+    emitter.unreact()
+    h.assert_false(emitter.has_subscriptions())
+    // Cold signal should auto-unreact new observers when it has unreacted.
+    signal.on_done(
+      where
+        unreact_handler = {
+          () => self.done = true
+        }
+    )
+    h.assert_true(done)
+    h.assert_false(emitter.has_subscriptions())
 
 
 class iso _TestEventsToColdSignalUsedWithZipRemovesSubscriptions is UnitTest
