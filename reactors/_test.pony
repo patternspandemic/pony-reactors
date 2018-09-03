@@ -102,6 +102,8 @@ actor Main is TestList
     test(_TestSignalConst)
     test(_TestSignalMutate1)
     test(_TestSignalAggregate)
+    test(_TestSignalChangesBasedOnEq)
+    test(_TestSignalChangesBasedOnIs)
     test(_TestSignalChangesFromEmpty)
     test(_TestSignalChangesFromInitial)
     test(_TestSignalIs)

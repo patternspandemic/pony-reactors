@@ -76,12 +76,12 @@ class _AfterThatObserver[T: Any #alias, S: Any #alias] is Observer[T]
 class _SignalChangesObserver[T: Any #alias] is Observer[T]
   let _target: Observer[T]
   var _cached: (T | _EmptySignal)
-  let _changed: {(T, T): Bool}
+  let _changed: {(T, T): Bool} val
 
   new create(
     target: Observer[T],
     cached: (T | _EmptySignal),
-    changed: {(T, T): Bool})
+    changed: {(T, T): Bool} val)
   =>
     _target = target
     _cached = cached
@@ -225,7 +225,7 @@ primitive BuildObserver[T: Any #alias]
   fun _signal_changes(
     target: Observer[T],
     cached: (T | _EmptySignal),
-    changed: {(T, T): Bool})
+    changed: {(T, T): Bool} val)
     : Observer[T]
   =>
     _SignalChangesObserver[T](target, cached, changed)

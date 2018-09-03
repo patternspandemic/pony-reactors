@@ -103,6 +103,73 @@ class iso _TestSignalChangesFromInitial is UnitTest
     h.assert_array_eq[USize]([3; 5; 7; 11], buffer)
 
 
+class iso _TestSignalChangesBasedOnEq is UnitTest
+  let buffer: Array[USize] = Array[USize]
+
+  fun name():String => "signal/changes/based on eq"
+
+  fun ref apply(h: TestHelper) =>
+    let self = this
+    let emitter = BuildEvents.emitter[USize]()
+    emitter.to_signal(0).changes({
+      (old: USize, new': USize): Bool => not old.eq(new')
+      }).on_event(
+        where
+          react_handler = {
+            (event: USize, hint: (EventHint | None) = None) =>
+              self.buffer.push(event)
+          }
+      )
+
+    emitter.react(3)
+    emitter.react(3)
+    emitter.react(5)
+    emitter.react(7)
+    emitter.react(7)
+    emitter.react(11)
+    h.assert_array_eq[USize]([3; 5; 7; 11], buffer)
+
+
+class tag _ChangesObjectTester
+class iso _TestSignalChangesBasedOnIs is UnitTest
+  let buffer: Array[_ChangesObjectTester tag] = Array[_ChangesObjectTester tag]
+
+  fun name():String => "signal/changes/based on is"
+
+  fun ref apply(h: TestHelper) =>
+    let self = this
+    let a: _ChangesObjectTester tag = _ChangesObjectTester
+    let b: _ChangesObjectTester tag = _ChangesObjectTester
+    let c: _ChangesObjectTester tag = _ChangesObjectTester
+    let d: _ChangesObjectTester tag = _ChangesObjectTester
+
+    let emitter = BuildEvents.emitter[_ChangesObjectTester tag]()
+    emitter.to_signal(a).changes().on_event(
+      where
+        react_handler = {(
+          event: _ChangesObjectTester tag, hint: (EventHint | None) = None)
+        =>
+          self.buffer.push(event)
+        }
+    )
+
+    emitter.react(a)
+    emitter.react(b)
+    emitter.react(b)
+    emitter.react(c)
+    emitter.react(d)
+    emitter.react(d)
+    emitter.react(a)
+    // Assert each buffered change is that of the expected.
+    for (i, tester) in [b; c; d; a].pairs() do
+      try
+        h.assert_is[_ChangesObjectTester tag](tester, buffer(i)?)
+      else
+        h.fail("changed based on identity failed")
+      end
+    end
+
+
 class iso _TestSignalIs is UnitTest
   fun name():String => "NI/signal/Is"
   fun ref apply(h: TestHelper) => h.fail("not implemented")

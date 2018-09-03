@@ -1,4 +1,8 @@
 
+primitive _DefaultChangesDetector[T: Any #alias]
+  """ Detect changes based on difference in identity. """
+  fun apply(old: T, new': T): Bool => not (old is new')
+
 trait Signal[T: Any #alias] is (Events[T] & Subscription)
   """
   A special type of event stream that caches the last emitted event.
@@ -15,15 +19,23 @@ trait Signal[T: Any #alias] is (Events[T] & Subscription)
     """ Returns `true` when the signal has a value. """
     not is_empty()
 
-  fun ref changes(changed: {(T, T): Bool}): Events[T] =>
+  fun ref changes(
+    changed: {(T, T): Bool} val =_DefaultChangesDetector[T])
+    : Events[T]
+  =>
     """
     An event stream that only emits events when the value of `this` signal
-    changes.
+    changes. By default, change is detected by difference in identity.
     """
     _Changes[T](this, changed)
 
+  // fun ref is(value: T): Events[T] =>
+  //   """
+  //   Emits only when the signal's value is that of the provided value based on
+  //   identity.
+  //   """
+
   /* TODO: Signal methods
-  changes
   is
   becomes (requires changes, Events.filter)
   diff_past
@@ -56,9 +68,9 @@ type MutableSignal[M: Any ref] is Mutable[M]
 class _Changes[T: Any #alias] is Events[T]
   """"""
   let _self: Signal[T]
-  let _changed: {(T, T): Bool}
+  let _changed: {(T, T): Bool} val
 
-  new create(self: Signal[T], changed: {(T, T): Bool}) =>
+  new create(self: Signal[T], changed: {(T, T): Bool} val) =>
     _self = self
     _changed = changed
 
@@ -71,8 +83,6 @@ class _Changes[T: Any #alias] is Events[T]
 
 
 /* TODO: Classes for Signals
-Changes
-  - ChangesObserver
 Is
   - IsObserver
 DiffPast
