@@ -57,15 +57,13 @@ class iso _TestSignalChangesFromEmpty is UnitTest
   fun ref apply(h: TestHelper) =>
     let self = this
     let emitter = BuildEvents.emitter[USize]()
-    emitter.to_empty_signal().changes({
-      (old: USize, new': USize): Bool => old != new'
-      }).on_event(
-        where
-          react_handler = {
-            (event: USize, hint: (EventHint | None) = None) =>
-              self.buffer.push(event)
-          }
-      )
+    emitter.to_empty_signal().changes().on_event(
+      where
+        react_handler = {
+          (event: USize, hint: (EventHint | None) = None) =>
+            self.buffer.push(event)
+        }
+    )
 
     emitter.react(3)
     emitter.react(3)
@@ -84,15 +82,13 @@ class iso _TestSignalChangesFromInitial is UnitTest
   fun ref apply(h: TestHelper) =>
     let self = this
     let emitter = BuildEvents.emitter[USize]()
-    emitter.to_signal(0).changes({
-      (old: USize, new': USize): Bool => old != new'
-      }).on_event(
-        where
-          react_handler = {
-            (event: USize, hint: (EventHint | None) = None) =>
-              self.buffer.push(event)
-          }
-      )
+    emitter.to_signal(0).changes().on_event(
+      where
+        react_handler = {
+          (event: USize, hint: (EventHint | None) = None) =>
+            self.buffer.push(event)
+        }
+    )
 
     emitter.react(3)
     emitter.react(3)
