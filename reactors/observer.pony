@@ -73,7 +73,24 @@ class _AfterThatObserver[T: Any #alias, S: Any #alias] is Observer[T]
     end
 
 
+class _IsValueObserver[T: Any #alias] is Observer[T]
+  """ Helper observer for `_Is` event streams. """
+  let _target: Observer[T]
+  let _value: T
+
+  new create(target: Observer[T], value: T) =>
+    _target = target
+    _value = value
+
+  fun ref react(value: T, hint: (EventHint | None) = None) =>
+    if _value is value then _target.react(value, hint) end
+
+  fun ref except(x: EventError) => _target.except(x)
+  fun ref unreact() => _target.unreact()
+
+
 class _SignalChangesObserver[T: Any #alias] is Observer[T]
+  """ Helper observer for `_Changes` event streams. """
   let _target: Observer[T]
   var _cached: (T | _EmptySignal)
   let _changed: {(T, T): Bool} val
@@ -168,6 +185,9 @@ primitive BuildObserver[T: Any #alias]
     : _AfterThatObserver[T, S]
   =>
     _AfterThatObserver[T, S](after_observer')
+
+  fun _is_value(target: Observer[T], value: T): Observer[T] =>
+    _IsValueObserver[T](target, value)
 
   fun of_react_and_unreact(
     react': {ref (T, (EventHint | None))},

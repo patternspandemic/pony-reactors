@@ -29,11 +29,13 @@ trait Signal[T: Any #alias] is (Events[T] & Subscription)
     """
     _Changes[T](this, changed)
 
-  // fun ref is(value: T): Events[T] =>
-  //   """
-  //   Emits only when the signal's value is that of the provided value based on
-  //   identity.
-  //   """
+  fun ref is_value(value: T): Events[T] =>
+    """
+    Emits only when the signal's value is that of the provided value based on
+    identity. Will immediately emit upon subscription if the signal's current
+    value is that of the provided value.
+    """
+    _Is[T](this, value)
 
   /* TODO: Signal methods
   is
@@ -44,25 +46,6 @@ trait Signal[T: Any #alias] is (Events[T] & Subscription)
   past_2 (requires Events.scan_past)
   with_subscription
   */
-
-
-class ConstSignal[T: Any #alias] is Signal[T]
-  """ Signal containing a constant value. """
-  let _value: T
-
-  new create(value: T) => _value = value
-  fun ref apply(): T => _value
-  fun is_empty(): Bool => false
-  fun _is_unsubscribed(): Bool => true
-  fun ref unsubscribe() => None
-  fun ref on_reaction(observer: Observer[T]): Subscription =>
-    observer.react(_value, None)
-    observer.unreact()
-    BuildSubscription.empty()
-
-
-type MutableSignal[M: Any ref] is Mutable[M]
-  """ Signal containing a mutable value. An alias of `Mutable`. """
 
 
 class _Changes[T: Any #alias] is Events[T]
@@ -80,6 +63,42 @@ class _Changes[T: Any #alias] is Events[T]
 
     _self.on_reaction(
       BuildObserver[T]._signal_changes(observer, cached, _changed))
+
+
+class ConstSignal[T: Any #alias] is Signal[T]
+  """ Signal containing a constant value. """
+  let _value: T
+
+  new create(value: T) => _value = value
+  fun ref apply(): T => _value
+  fun is_empty(): Bool => false
+  fun _is_unsubscribed(): Bool => true
+  fun ref unsubscribe() => None
+  fun ref on_reaction(observer: Observer[T]): Subscription =>
+    observer.react(_value, None)
+    observer.unreact()
+    BuildSubscription.empty()
+
+
+class _Is[T: Any #alias] is Events[T]
+  """"""
+  let _self: Signal[T]
+  let _value: T
+
+  new create(self: Signal[T], value: T) =>
+    _self = self
+    _value = value
+
+  fun ref on_reaction(observer: Observer[T]): Subscription =>
+    try
+      if _self()? is _value then observer.react(_value, None) end
+    end
+    _self.on_reaction(BuildObserver[T]._is_value(observer, _value))
+
+
+type MutableSignal[M: Any ref] is Mutable[M]
+  """ Signal containing a mutable value. An alias of `Mutable`. """
+
 
 
 /* TODO: Classes for Signals

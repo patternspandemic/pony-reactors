@@ -167,8 +167,24 @@ class iso _TestSignalChangesBasedOnIs is UnitTest
 
 
 class iso _TestSignalIs is UnitTest
-  fun name():String => "NI/signal/Is"
-  fun ref apply(h: TestHelper) => h.fail("not implemented")
+  var reacted: Bool = false
+
+  fun name():String => "signal/is_value"
+
+  fun ref apply(h: TestHelper) =>
+    let self = this
+    let emitter = BuildEvents.emitter[String]()
+    emitter.to_signal("").is_value("Pony").on(
+      where
+        react_handler = {
+          () => self.reacted = true
+        }
+    )
+
+    emitter.react("Horse")
+    h.assert_false(reacted)
+    emitter.react("Pony")
+    h.assert_true(reacted)
 
 
 class iso _TestSignalBecomes is UnitTest
