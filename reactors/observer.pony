@@ -73,6 +73,36 @@ class _AfterThatObserver[T: Any #alias, S: Any #alias] is Observer[T]
     end
 
 
+class _SignalChangesObserver[T: Any #alias] is Observer[T]
+  let _target: Observer[T]
+  var _cached: (T | _EmptySignal)
+  let _changed: {(T, T): Bool}
+
+  new create(
+    target: Observer[T],
+    cached: (T | _EmptySignal),
+    changed: {(T, T): Bool})
+  =>
+    _target = target
+    _cached = cached
+    _changed = changed
+
+  fun ref react(value: T, hint: (EventHint | None) = None) =>
+    match _cached
+    | let value': T =>
+      if _changed(value', value) then
+        _cached = value
+        _target.react(value, hint)
+      end
+    | _EmptySignal =>
+      _cached = value
+      _target.react(value, hint)
+    end
+
+  fun ref except(x: EventError) => _target.except(x)
+  fun ref unreact() => _target.unreact()
+
+
 class _ToColdSelfObserver[T: Any #alias] is Observer[T]
   """ Helper observer for `_ToColdSignal` event streams. """
   let _signal: _ToColdSignal[T]
@@ -191,6 +221,14 @@ primitive BuildObserver[T: Any #alias]
     object is Observer[T]
       fun ref except(x: EventError) => except'(x)
     end
+
+  fun _signal_changes(
+    target: Observer[T],
+    cached: (T | _EmptySignal),
+    changed: {(T, T): Bool})
+    : Observer[T]
+  =>
+    _SignalChangesObserver[T](target, cached, changed)
 
   fun that_mutates[C: Any ref](
     mutable': Mutable[C],

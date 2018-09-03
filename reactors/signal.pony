@@ -15,6 +15,13 @@ trait Signal[T: Any #alias] is (Events[T] & Subscription)
     """ Returns `true` when the signal has a value. """
     not is_empty()
 
+  fun ref changes(changed: {(T, T): Bool}): Events[T] =>
+    """
+    An event stream that only emits events when the value of `this` signal
+    changes.
+    """
+    _Changes[T](this, changed)
+
   /* TODO: Signal methods
   changes
   is
@@ -44,6 +51,23 @@ class ConstSignal[T: Any #alias] is Signal[T]
 
 type MutableSignal[M: Any ref] is Mutable[M]
   """ Signal containing a mutable value. An alias of `Mutable`. """
+
+
+class _Changes[T: Any #alias] is Events[T]
+  """"""
+  let _self: Signal[T]
+  let _changed: {(T, T): Bool}
+
+  new create(self: Signal[T], changed: {(T, T): Bool}) =>
+    _self = self
+    _changed = changed
+
+  fun ref on_reaction(observer: Observer[T]): Subscription =>
+    let cached: (T | _EmptySignal) =
+      try _self()? else _EmptySignal end
+
+    _self.on_reaction(
+      BuildObserver[T]._signal_changes(observer, cached, _changed))
 
 
 /* TODO: Classes for Signals

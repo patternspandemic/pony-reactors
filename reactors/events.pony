@@ -295,6 +295,7 @@ class _PushSource[T: Any #alias] is Push[T]
 
 
 primitive \nosupertype\ _EmptySignal
+  """ The non-value of a signal. """
 
 class _ToSignal[T: Any #alias] is (Signal[T] & Observer[T] & SubscriptionProxy)
   """"""

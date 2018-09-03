@@ -49,9 +49,58 @@ class iso _TestSignalAggregate is UnitTest
   fun ref apply(h: TestHelper) => h.fail("not implemented")
 
 
-class iso _TestSignalChanges is UnitTest
-  fun name():String => "NI/signal/Changes"
-  fun ref apply(h: TestHelper) => h.fail("not implemented")
+class iso _TestSignalChangesFromEmpty is UnitTest
+  let buffer: Array[USize] = Array[USize]
+
+  fun name():String => "signal/changes/from empty"
+
+  fun ref apply(h: TestHelper) =>
+    let self = this
+    let emitter = BuildEvents.emitter[USize]()
+    emitter.to_empty_signal().changes({
+      (old: USize, new': USize): Bool => old != new'
+      }).on_event(
+        where
+          react_handler = {
+            (event: USize, hint: (EventHint | None) = None) =>
+              self.buffer.push(event)
+          }
+      )
+
+    emitter.react(3)
+    emitter.react(3)
+    emitter.react(5)
+    emitter.react(7)
+    emitter.react(7)
+    emitter.react(11)
+    h.assert_array_eq[USize]([3; 5; 7; 11], buffer)
+
+
+class iso _TestSignalChangesFromInitial is UnitTest
+  let buffer: Array[USize] = Array[USize]
+
+  fun name():String => "signal/changes/from initial"
+
+  fun ref apply(h: TestHelper) =>
+    let self = this
+    let emitter = BuildEvents.emitter[USize]()
+    emitter.to_signal(0).changes({
+      (old: USize, new': USize): Bool => old != new'
+      }).on_event(
+        where
+          react_handler = {
+            (event: USize, hint: (EventHint | None) = None) =>
+              self.buffer.push(event)
+          }
+      )
+
+    emitter.react(3)
+    emitter.react(3)
+    emitter.react(5)
+    emitter.react(7)
+    emitter.react(7)
+    emitter.react(11)
+    h.assert_array_eq[USize]([3; 5; 7; 11], buffer)
 
 
 class iso _TestSignalIs is UnitTest
