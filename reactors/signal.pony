@@ -37,14 +37,15 @@ trait Signal[T: Any #alias] is (Events[T] & Subscription)
     """
     _Is[T](this, value)
 
+  fun ref with_subscription(subscription: Subscription): Signal[T] =>
+    _WithSubscription[T](this, subscription)
+
   /* TODO: Signal methods
-  is
   becomes (requires changes, Events.filter)
-  diff_past
-  zip
-  sync_with
+  diff_past (requires zip)
+  sync_with(requires Events.sync)
   past_2 (requires Events.scan_past)
-  with_subscription
+  zip
   */
 
 
@@ -100,10 +101,29 @@ type MutableSignal[M: Any ref] is Mutable[M]
   """ Signal containing a mutable value. An alias of `Mutable`. """
 
 
+class _WithSubscription[T: Any #alias] is Signal[T]
+  """"""
+  let _self: Signal[T]
+  let _subscription: Subscription
+
+  new create(self: Signal[T], subscription: Subscription) =>
+    _self = self
+    _subscription = subscription
+
+  fun ref on_reaction(observer: Observer[T]): Subscription =>
+    let sub = _self.on_reaction(observer)
+    BuildSubscription.composite([sub; _subscription])
+
+  fun ref apply(): T? => _self()?
+  fun is_empty(): Bool => _self.is_empty()
+  fun _is_unsubscribed(): Bool => _self._is_unsubscribed()
+
+  fun ref unsubscribe() =>
+    _subscription.unsubscribe()
+    _self.unsubscribe()
+
 
 /* TODO: Classes for Signals
-Is
-  - IsObserver
 DiffPast
   - DiffPastObserver
 Zip

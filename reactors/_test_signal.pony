@@ -213,5 +213,29 @@ class iso _TestSignalPast2 is UnitTest
 
 
 class iso _TestSignalWithSubscription is UnitTest
-  fun name():String => "NI/signal/WithSubscription"
-  fun ref apply(h: TestHelper) => h.fail("not implemented")
+  var unsubbed: Bool = false
+
+  fun name():String => "signal/with_subscription"
+
+  fun ref apply(h: TestHelper) =>
+    let self = this
+    let emitter = BuildEvents.emitter[Bool]()
+    let signal = emitter.to_signal(false).with_subscription(
+      BuildSubscription(
+        where
+          unsubscribe_action = {ref
+            () => self.unsubbed = true
+          }
+      )
+    )
+
+  emitter.react(true)
+  try
+    h.assert_true(signal()?, "signal value should have changed")
+  else
+    h.fail("signal should have a value")
+  end
+  h.assert_false(unsubbed, "signal w/sub should not have unsubscribed yet")
+  // Unsubscribing the signal should also unsubscribe the extra subscription.
+  signal.unsubscribe()
+  h.assert_true(unsubbed, "signal w/sub should have unsubscribed")
