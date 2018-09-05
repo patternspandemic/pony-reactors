@@ -132,7 +132,6 @@ Zip
 ZipState
 ZipMany
   - ZipManyObserver
-WithSubscription
 */
 
 
@@ -145,6 +144,6 @@ primitive BuildSignal
     MutableSignal[M](content)
 
   /* TODO: BuildSignal methods
-  zip
+  zip_many
   aggregate (requires Signal.zip)
   */

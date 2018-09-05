@@ -5,6 +5,9 @@ interface val EventHint
 interface val EventError
   fun apply(): String val
 
+primitive MapError is EventError
+  fun apply(): String => "MapError"
+
 // TODO: Remove OptionalEventHint - Probably unneeded.
 type OptionalEventHint is (EventHint | None)
 
@@ -85,6 +88,20 @@ trait Events[T: Any #alias]
     """
     _After[T, S](this, that)
 
+  // TODO: Events.map - Which is more performant for map excepts? Using error or a union? A union would also box T. Below uses error.
+  fun ref map[S: Any #alias](
+    f: {(T): S?},
+    map_except: EventError = MapError)
+    : Events[S]
+  =>
+    """
+    Returns a new event stream of mapped events from `this` event stream using
+    the partial function `f`. Any events generating an error under the mapping
+    will instead except on the new stream with the `EventError` defined by
+    `map_except`, by default a `MapError`.
+    """
+    _Map[T, S](this, f, map_except)
+
   fun ref mutate[C: Any ref](
     mutable: Mutable[C],
     mutator: {ref (C, T)})
@@ -94,7 +111,7 @@ trait Events[T: Any #alias]
     Mutate the target `Mutable` event stream called `mutable` with `mutator`
     each time this event stream produces an event.
     """
-    let o: Observer[T] = BuildObserver[T].that_mutates[C](mutable, mutator)
+    let o: Observer[T] = BuildObserver[T]._mutate[C](mutable, mutator)
     on_reaction(o)
 
   // TODO: Events.to_*signal docstrings
@@ -117,6 +134,13 @@ trait Events[T: Any #alias]
   fun ref to_done_signal(): Signal[Bool] =>
     """"""
     done().map[Bool]({() => true}).to_signal(false)
+*/
+
+/*
+map
+filter
+sync
+scan_past
 */
 
 
@@ -233,6 +257,21 @@ class Emitter[T: Any #alias] is (Push[T] & Observer[T])
     if not _get_events_unreacted() then
       unreact_all()
     end
+
+
+class _Map[T: Any #alias, S: Any #alias] is Events[S]
+  let _self: Events[T]
+  let _f: {(T): S?}
+  let _map_except: EventError
+
+  new create(self: Events[T], f: {(T): S?}, map_except: EventError) =>
+    _self = self
+    _f = f
+    _map_except = map_except
+
+  fun ref on_reaction(observer: Observer[S]): Subscription =>
+    _self.on_reaction(BuildObserver[T]._map[S](observer, _f, _map_except))
+
 
 // TODO: Mutable - Try to make this safer by requiring the mutator replace content with val versions, makeing the only way to easily update the signal to go through the mutate observer protocol. So instead of allowing content to be directly mutable (ref), allow it to be (val) replaced by the mutator.
 // TODO: Mutable - Fill out docstring

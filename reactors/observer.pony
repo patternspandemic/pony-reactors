@@ -89,6 +89,23 @@ class _IsValueObserver[T: Any #alias] is Observer[T]
   fun ref unreact() => _target.unreact()
 
 
+class _MapObserver[T: Any #alias, S: Any #alias] is Observer[T]
+  let _target: Observer[S]
+  let _f: {(T): S?}
+  let _map_except: EventError
+
+  new create(target: Observer[S], f: {(T): S?}, map_except: EventError) =>
+    _target = target
+    _f = f
+    _map_except = map_except
+
+  fun ref react(value: T, hint: (EventHint | None) = None) =>
+    None
+
+  fun ref except(x: EventError) => _target.except(x)
+  fun ref unreact() => _target.unreact()
+
+
 class _SignalChangesObserver[T: Any #alias] is Observer[T]
   """ Helper observer for `_Changes` event streams. """
   let _target: Observer[T]
@@ -189,6 +206,14 @@ primitive BuildObserver[T: Any #alias]
   fun _is_value(target: Observer[T], value: T): Observer[T] =>
     _IsValueObserver[T](target, value)
 
+  fun _map[S: Any #alias](
+    target: Observer[S],
+    f: {(T): S?},
+    map_except: EventError)
+    : Observer[T]
+  =>
+    _MapObserver[T, S](target, f, map_except)
+
   fun of_react_and_unreact(
     react': {ref (T, (EventHint | None))},
     unreact': {ref ()})
@@ -250,7 +275,7 @@ primitive BuildObserver[T: Any #alias]
   =>
     _SignalChangesObserver[T](target, cached, changed)
 
-  fun that_mutates[C: Any ref](
+  fun _mutate[C: Any ref](
     mutable': Mutable[C],
     mutator': {ref (C, T)}) // TODO: mutator need not be ref?
     : Observer[T]
